@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đánh Cờ Tướng Online — Chơi cờ tướng với AI miễn phí</title>
+    <meta
+      name="description"
+      content="Chơi cờ tướng (Xiangqi) online miễn phí với máy (AI) 3 mức độ. Đầy đủ luật, lịch sử nước đi, đồng hồ thi đấu."
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="container nav-inner">
+        <a class="brand" href="index.html">
+          <span class="logo">將</span>
+          <span>Cờ Tướng Online</span>
+        </a>
+        <button class="nav-toggle" aria-label="Menu">☰</button>
+        <ul class="nav-menu">
+          <li><a href="index.html">Trang chủ</a></li>
+          <li><a href="play.html">Chơi với máy</a></li>
+          <li><a href="profile.html" data-auth="user" style="display: none">Hồ sơ</a></li>
+        </ul>
+        <div class="nav-actions">
+          <a class="btn btn-ghost" href="login.html" data-auth="guest">Đăng nhập</a>
+          <a class="btn btn-primary" href="register.html" data-auth="guest">Đăng ký</a>
+          <span data-auth="user" style="display: none; font-weight: 700"
+            >Xin chào, <span data-user-name>bạn</span></span
+          >
+          <a class="btn btn-ghost" href="#" data-auth="user" data-action="logout" style="display: none"
+            >Đăng xuất</a
+          >
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero container">
+        <h1>Đánh <span class="grad">Cờ Tướng</span> Online</h1>
+        <p>
+          Thử tài với máy thông minh qua 3 mức độ, đầy đủ luật cờ tướng, lịch sử nước đi và đồng hồ thi
+          đấu. Không cần cài đặt — chơi ngay trên trình duyệt.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary btn-lg" href="play.html">♟ Chơi với máy ngay</a>
+          <a class="btn btn-ghost btn-lg" href="register.html">Tạo tài khoản</a>
+        </div>
+      </section>
+
+      <section class="section container">
+        <h2>Tính năng nổi bật</h2>
+        <p class="sub">Mọi thứ bạn cần cho một ván cờ tướng trọn vẹn</p>
+        <div class="grid grid-3">
+          <div class="card feature">
+            <div class="ico">🤖</div>
+            <h3>Đối thủ AI 3 mức</h3>
+            <p>Dễ, Trung bình, Khó — máy dùng thuật toán minimax + cắt tỉa alpha-beta.</p>
+          </div>
+          <div class="card feature">
+            <div class="ico">📜</div>
+            <h3>Luật cờ tướng đầy đủ</h3>
+            <p>Mã cản chân, pháo cần ngòi, tượng không qua sông, tướng không đối mặt, chiếu hết.</p>
+          </div>
+          <div class="card feature">
+            <div class="ico">⏱️</div>
+            <h3>Đồng hồ thi đấu</h3>
+            <p>Chọn 5, 10 hoặc 15 phút cho mỗi bên, đếm ngược theo lượt.</p>
+          </div>
+          <div class="card feature">
+            <div class="ico">🔁</div>
+            <h3>Lịch sử & hoàn nước</h3>
+            <p>Theo dõi toàn bộ nước đi, xem quân bị bắt, hoàn lại nước khi cần.</p>
+          </div>
+          <div class="card feature">
+            <div class="ico">🔊</div>
+            <h3>Hiệu ứng âm thanh</h3>
+            <p>Âm báo khi đi quân, ăn quân, chiếu tướng và kết thúc ván đấu.</p>
+          </div>
+          <div class="card feature">
+            <div class="ico">📊</div>
+            <h3>Hồ sơ & thống kê</h3>
+            <p>Đăng nhập để lưu kết quả, thống kê thắng/thua và lịch sử ván đấu.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section container center">
+        <div class="card" style="padding: 40px">
+          <h2>Sẵn sàng vào trận?</h2>
+          <p class="text-muted">Chọn mức độ và bắt đầu ngay, không cần đăng ký.</p>
+          <a class="btn btn-accent btn-lg" href="play.html">Bắt đầu chơi</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        © 2026 Đánh Cờ Tướng Online — Dự án học tập. Xây dựng bằng Node.js + MySQL.
+      </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+  </body>
+</html>

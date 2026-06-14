@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Đăng ký — Đánh Cờ Tướng Online</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="container nav-inner">
+        <a class="brand" href="index.html"><span class="logo">將</span><span>Cờ Tướng Online</span></a>
+        <button class="nav-toggle" aria-label="Menu">☰</button>
+        <ul class="nav-menu">
+          <li><a href="index.html">Trang chủ</a></li>
+          <li><a href="play.html">Chơi với máy</a></li>
+        </ul>
+        <div class="nav-actions">
+          <a class="btn btn-ghost" href="login.html">Đăng nhập</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="auth-wrap card">
+        <h1>Tạo tài khoản</h1>
+        <p class="center text-muted" style="margin-top: 0">Lưu kết quả và theo dõi tiến bộ của bạn.</p>
+        <form id="register-form">
+          <div class="form-msg" id="msg"></div>
+          <div class="form-group">
+            <label for="username">Tên đăng nhập</label>
+            <input class="input" type="text" id="username" required minlength="3" autocomplete="username" />
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input class="input" type="email" id="email" required autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="password">Mật khẩu (tối thiểu 6 ký tự)</label>
+            <input class="input" type="password" id="password" required minlength="6" autocomplete="new-password" />
+          </div>
+          <button class="btn btn-primary btn-block btn-lg" type="submit">Đăng ký</button>
+        </form>
+        <div class="form-foot">Đã có tài khoản? <a href="login.html">Đăng nhập</a></div>
+      </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script>
+      document.getElementById('register-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('msg');
+        msg.className = 'form-msg';
+        msg.textContent = '';
+        try {
+          await window.API.register(
+            document.getElementById('username').value.trim(),
+            document.getElementById('email').value.trim(),
+            document.getElementById('password').value
+          );
+          location.href = 'profile.html';
+        } catch (err) {
+          msg.className = 'form-msg error';
+          msg.textContent = err.message || 'Đăng ký thất bại';
+        }
+      });
+    </script>
+  </body>
+</html>

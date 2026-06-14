@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hồ sơ — Đánh Cờ Tướng Online</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="container nav-inner">
+        <a class="brand" href="index.html"><span class="logo">將</span><span>Cờ Tướng Online</span></a>
+        <button class="nav-toggle" aria-label="Menu">☰</button>
+        <ul class="nav-menu">
+          <li><a href="index.html">Trang chủ</a></li>
+          <li><a href="play.html">Chơi với máy</a></li>
+          <li><a href="profile.html">Hồ sơ</a></li>
+        </ul>
+        <div class="nav-actions">
+          <span style="font-weight: 700">Xin chào, <span data-user-name>bạn</span></span>
+          <a class="btn btn-ghost" href="#" data-action="logout">Đăng xuất</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container" style="padding: 28px 20px 60px">
+      <div id="guard" class="card center" style="display: none">
+        <h2>Bạn chưa đăng nhập</h2>
+        <p class="text-muted">Vui lòng đăng nhập để xem hồ sơ.</p>
+        <a class="btn btn-primary" href="login.html">Đăng nhập</a>
+      </div>
+
+      <div id="content" style="display: none">
+        <h1 id="hello">Hồ sơ</h1>
+
+        <div class="card" style="margin-bottom: 22px">
+          <h3 style="margin-top: 0; color: var(--c-muted)">Thống kê</h3>
+          <div class="stat-grid">
+            <div class="stat"><div class="num" id="s-elo">1000</div><div class="lbl">ELO</div></div>
+            <div class="stat"><div class="num" id="s-win">0</div><div class="lbl">Thắng</div></div>
+            <div class="stat"><div class="num" id="s-loss">0</div><div class="lbl">Thua</div></div>
+            <div class="stat"><div class="num" id="s-draw">0</div><div class="lbl">Hòa</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-top: 0; color: var(--c-muted)">Lịch sử ván đấu gần đây</h3>
+          <table class="games">
+            <thead>
+              <tr>
+                <th>Thời gian</th>
+                <th>Đối thủ</th>
+                <th>Kết quả</th>
+                <th>Số nước</th>
+                <th>Thời lượng</th>
+              </tr>
+            </thead>
+            <tbody id="games-body">
+              <tr><td colspan="5" class="text-muted">Đang tải…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script>
+      (async function () {
+        const guard = document.getElementById('guard');
+        const content = document.getElementById('content');
+        let me = null;
+        try {
+          me = await window.API.me();
+        } catch (e) {}
+        if (!me || !me.user) {
+          guard.style.display = '';
+          return;
+        }
+        content.style.display = '';
+        const u = me.user;
+        document.getElementById('hello').textContent = 'Hồ sơ của ' + u.username;
+        document.getElementById('s-elo').textContent = u.elo;
+        document.getElementById('s-win').textContent = u.wins;
+        document.getElementById('s-loss').textContent = u.losses;
+        document.getElementById('s-draw').textContent = u.draws;
+
+        const body = document.getElementById('games-body');
+        try {
+          const { games } = await window.API.myGames();
+          if (!games.length) {
+            body.innerHTML = '<tr><td colspan="5" class="text-muted">Chưa có ván nào. Hãy chơi thử!</td></tr>';
+            return;
+          }
+          const fmt = (s) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+          const badge = { win: ['win', 'Thắng'], loss: ['loss', 'Thua'], draw: ['draw', 'Hòa'] };
+          body.innerHTML = games
+            .map((g) => {
+              const b = badge[g.result] || ['draw', g.result];
+              const dt = new Date(g.created_at).toLocaleString('vi-VN');
+              return (
+                '<tr><td>' +
+                dt +
+                '</td><td>' +
+                g.opponent_type +
+                '</td><td><span class="badge ' +
+                b[0] +
+                '">' +
+                b[1] +
+                '</span></td><td>' +
+                g.moves_count +
+                '</td><td>' +
+                fmt(g.duration_sec) +
+                '</td></tr>'
+              );
+            })
+            .join('');
+        } catch (e) {
+          body.innerHTML = '<tr><td colspan="5" class="text-muted">Không tải được lịch sử.</td></tr>';
+        }
+      })();
+    </script>
+  </body>
+</html>
