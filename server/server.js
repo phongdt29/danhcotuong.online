@@ -8,6 +8,7 @@ const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const { WebSocketServer } = require('ws');
 require('dotenv').config();
+const buildSsl = require('./config/ssl');
 
 const authRoutes = require('./routes/auth.routes');
 const gameRoutes = require('./routes/game.routes');
@@ -29,6 +30,7 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 
 // Session lưu vào MySQL (production-ready, không mất phiên khi restart).
+const dbSsl = buildSsl();
 const sessionStore = new MySQLStore({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT) || 3306,
@@ -37,6 +39,7 @@ const sessionStore = new MySQLStore({
   database: process.env.DB_NAME || 'danhcotuong',
   createDatabaseTable: true,
   charset: 'utf8mb4_bin',
+  ...(dbSsl ? { ssl: dbSsl } : {}),
 });
 
 app.use(
@@ -78,6 +81,12 @@ app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
   res.status(err.status || 500).json({ error: IS_PROD ? 'Lỗi máy chủ' : String(err.message || err) });
 });
+
+// Tự tạo bảng khi khởi động (giúp deploy cloud không cần chạy init-db thủ công).
+const ensureSchema = require('./config/ensureSchema');
+ensureSchema()
+  .then(() => console.log('✓ Bảng dữ liệu đã sẵn sàng.'))
+  .catch((e) => console.error('✗ Không tạo được bảng dữ liệu (kiểm tra DB_*/DB_SSL):', e.message));
 
 const server = http.createServer(app);
 
