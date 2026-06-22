@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chơi với máy — Đánh Cờ Tướng Online</title>
+    <title>Chơi với người — Đánh Cờ Tướng Online</title>
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/board.css" />
   </head>
@@ -25,7 +25,7 @@
           <a class="btn btn-ghost" href="login.html" data-auth="guest">Đăng nhập</a>
           <a class="btn btn-primary" href="register.html" data-auth="guest">Đăng ký</a>
           <span data-auth="user" style="display: none; font-weight: 700"
-            ><span data-user-name>bạn</span></span
+            >Xin chào, <span data-user-name>bạn</span></span
           >
           <a class="btn btn-ghost" href="#" data-auth="user" data-action="logout" style="display: none"
             >Đăng xuất</a
@@ -39,17 +39,15 @@
         <!-- Cột bàn cờ -->
         <div class="board-col">
           <div class="player-bar" id="bar-black">
-            <div class="who"><span class="dot black"></span> Máy (Đen) — <span id="ai-level">AI</span></div>
+            <div class="who"><span class="dot black"></span> <span id="name-black">Đối thủ (Đen)</span></div>
             <div class="captured" id="captured-black"></div>
-            <div class="clock" id="timer-black">10:00</div>
           </div>
 
           <div id="board"></div>
 
           <div class="player-bar active" id="bar-red">
-            <div class="who"><span class="dot red"></span> Bạn (Đỏ)</div>
+            <div class="who"><span class="dot red"></span> <span id="name-red">Bạn (Đỏ)</span></div>
             <div class="captured" id="captured-red"></div>
-            <div class="clock" id="timer-red">10:00</div>
           </div>
         </div>
 
@@ -57,15 +55,23 @@
         <aside class="side-panel">
           <div class="panel">
             <h3>Trạng thái</h3>
-            <div id="status-msg">Chọn mức độ để bắt đầu</div>
+            <div id="status-msg">Đang kết nối máy chủ…</div>
           </div>
 
           <div class="panel">
             <h3>Điều khiển</h3>
             <div class="controls">
-              <button class="btn btn-ghost" id="btn-undo">↶ Hoàn nước</button>
-              <button class="btn btn-ghost" id="btn-resign">🏳 Xin thua</button>
-              <button class="btn btn-primary" id="btn-new">＋ Ván mới</button>
+              <button class="btn btn-ghost" id="btn-resign" disabled>🏳 Xin thua</button>
+              <button class="btn btn-primary" id="btn-new">＋ Trận mới</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>Trò chuyện</h3>
+            <div id="chat-log" class="chat-log"></div>
+            <div class="chat-row">
+              <input type="text" id="chat-input" placeholder="Nhắn đối thủ…" maxlength="200" disabled />
+              <button class="btn btn-ghost" id="chat-send" disabled>Gửi</button>
             </div>
           </div>
 
@@ -77,33 +83,37 @@
       </div>
     </main>
 
-    <!-- Overlay thiết lập ván -->
-    <div class="overlay" id="setup-overlay">
+    <!-- Overlay sảnh: chọn cách vào trận -->
+    <div class="overlay" id="lobby-overlay">
       <div class="modal">
-        <h2>♟ Thiết lập ván đấu</h2>
+        <h2>♟ Chơi với người</h2>
+        <p class="text-muted" id="lobby-status">Đang kết nối máy chủ…</p>
+
         <div class="opt-group">
-          <label>Độ khó của máy</label>
-          <div class="opt-row">
-            <input type="radio" name="difficulty" id="d-easy" value="easy" />
-            <label for="d-easy">Dễ</label>
-            <input type="radio" name="difficulty" id="d-med" value="medium" checked />
-            <label for="d-med">Trung bình</label>
-            <input type="radio" name="difficulty" id="d-hard" value="hard" />
-            <label for="d-hard">Khó</label>
+          <button class="btn btn-primary btn-block btn-lg" id="btn-quick" disabled>⚡ Tìm trận nhanh</button>
+        </div>
+
+        <div class="opt-group">
+          <button class="btn btn-accent btn-block btn-lg" id="btn-create" disabled>＋ Tạo phòng riêng</button>
+        </div>
+
+        <div class="opt-group">
+          <label>Vào phòng bằng mã</label>
+          <div class="chat-row">
+            <input type="text" id="join-code" placeholder="VD: AB12" maxlength="4" style="text-transform: uppercase" />
+            <button class="btn btn-ghost" id="btn-join" disabled>Vào</button>
           </div>
         </div>
-        <div class="opt-group">
-          <label>Thời gian mỗi bên</label>
-          <div class="opt-row">
-            <input type="radio" name="time" id="t-5" value="5" />
-            <label for="t-5">5 phút</label>
-            <input type="radio" name="time" id="t-10" value="10" checked />
-            <label for="t-10">10 phút</label>
-            <input type="radio" name="time" id="t-15" value="15" />
-            <label for="t-15">15 phút</label>
+
+        <!-- Khung hiển thị khi đang chờ -->
+        <div id="waiting-box" class="hidden" style="margin-top: 14px; text-align: center">
+          <p id="waiting-msg" class="text-muted"></p>
+          <div id="code-box" class="hidden">
+            <div style="font-size: 13px; color: var(--c-muted)">Gửi mã này cho bạn bè:</div>
+            <div id="room-code" class="room-code"></div>
           </div>
+          <button class="btn btn-ghost" id="btn-cancel" style="margin-top: 10px">Huỷ</button>
         </div>
-        <button class="btn btn-primary btn-block btn-lg" id="btn-start">Bắt đầu</button>
       </div>
     </div>
 
@@ -113,8 +123,8 @@
         <h2 id="result-title">Kết thúc</h2>
         <p class="text-muted" id="result-reason"></p>
         <div class="controls" style="margin-top: 18px">
-          <button class="btn btn-ghost" id="btn-again">Chơi lại</button>
-          <a class="btn btn-primary" href="index.html">Về trang chủ</a>
+          <button class="btn btn-primary" id="btn-again">Trận mới</button>
+          <a class="btn btn-ghost" href="index.html">Về trang chủ</a>
         </div>
       </div>
     </div>
@@ -122,18 +132,7 @@
     <script src="js/engine/xiangqi.js"></script>
     <script src="js/board.js"></script>
     <script src="js/api.js"></script>
-    <script src="js/play.js"></script>
+    <script src="js/play-online.js"></script>
     <script src="js/ui.js"></script>
-    <script>
-      // hiển thị nhãn độ khó trên thanh người chơi
-      (function () {
-        const map = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' };
-        document.querySelectorAll('input[name="difficulty"]').forEach((r) =>
-          r.addEventListener('change', () => {
-            document.getElementById('ai-level').textContent = map[r.value] || 'AI';
-          })
-        );
-      })();
-    </script>
   </body>
 </html>

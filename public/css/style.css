@@ -578,6 +578,47 @@ table.games th {
     order: 2;
   }
 }
+/* ---------- Chơi với người: chat + mã phòng ---------- */
+.chat-log {
+  max-height: 160px;
+  overflow-y: auto;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.chat-line {
+  background: var(--c-bg-soft);
+  padding: 4px 8px;
+  border-radius: 8px;
+  word-break: break-word;
+}
+.chat-line b {
+  color: var(--c-accent);
+}
+.chat-row {
+  display: flex;
+  gap: 8px;
+}
+.chat-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--c-border);
+  background: var(--c-bg-soft);
+  color: var(--c-text);
+}
+.room-code {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: var(--c-accent);
+  margin: 6px 0;
+  font-family: "Noto Serif", monospace;
+}
+
 @media (max-width: 760px) {
   .grid-3,
   .grid-2 {

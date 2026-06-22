@@ -6,7 +6,6 @@ const http = require('http');
 const express = require('express');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
-const { WebSocketServer } = require('ws');
 require('dotenv').config();
 const buildSsl = require('./config/ssl');
 
@@ -90,21 +89,8 @@ ensureSchema()
 
 const server = http.createServer(app);
 
-/* ---------- WebSocket (nền cho đấu online — Giai đoạn 2) ---------- */
-const wss = new WebSocketServer({ server, path: '/ws' });
-wss.on('connection', (ws) => {
-  ws.send(JSON.stringify({ type: 'welcome', msg: 'WebSocket sẵn sàng (đấu online — GĐ2)' }));
-  ws.on('message', (data) => {
-    // Giai đoạn 2: ghép trận, đồng bộ nước đi giữa 2 người chơi.
-    // Hiện tại chỉ phản hồi echo để xác nhận kết nối.
-    try {
-      const msg = JSON.parse(data);
-      ws.send(JSON.stringify({ type: 'echo', data: msg }));
-    } catch (e) {
-      /* bỏ qua message không hợp lệ */
-    }
-  });
-});
+/* ---------- WebSocket: đấu Cờ Tướng người với người (real-time) ---------- */
+require('./realtime/match')(server);
 
 server.listen(PORT, () => {
   console.log(`\n✓ Đánh Cờ Tướng Online đang chạy (${IS_PROD ? 'production' : 'development'}): http://localhost:${PORT}\n`);
