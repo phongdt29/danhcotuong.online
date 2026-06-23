@@ -33,7 +33,7 @@
     ws.onmessage = (ev) => {
       let msg;
       try { msg = JSON.parse(ev.data); } catch (e) { return; }
-      if (msg.type === 'rooms') renderRooms(msg.rooms || []);
+      if (msg.type === 'rooms') { renderRooms(msg.rooms || []); renderLive(msg.live || []); }
     };
   }
 
@@ -61,6 +61,34 @@
       btn.className = 'btn btn-primary';
       btn.textContent = 'Vào';
       btn.addEventListener('click', () => { location.href = 'play-online.html?join=' + encodeURIComponent(r.code); });
+      row.appendChild(info);
+      row.appendChild(btn);
+      box.appendChild(row);
+    });
+  }
+
+  function renderLive(list) {
+    const cnt = $('live-count');
+    if (cnt) cnt.textContent = list.length;
+    const box = $('live-list');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!list.length) {
+      box.innerHTML = '<div class="room-empty">Chưa có trận nào đang diễn ra.</div>';
+      return;
+    }
+    list.forEach((m) => {
+      const row = document.createElement('div');
+      row.className = 'room-item';
+      const info = document.createElement('span');
+      info.className = 'room-info';
+      info.innerHTML =
+        '<b>' + escapeHtml(m.red) + '</b> <span class="room-code-sm">đấu</span> <b>' + escapeHtml(m.black) +
+        '</b><span class="room-code-sm">' + (m.moves || 0) + ' nước</span>';
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-accent';
+      btn.textContent = '👁 Xem';
+      btn.addEventListener('click', () => { location.href = 'spectate.html?code=' + encodeURIComponent(m.code); });
       row.appendChild(info);
       row.appendChild(btn);
       box.appendChild(row);

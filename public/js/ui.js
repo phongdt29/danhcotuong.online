@@ -41,6 +41,19 @@
     }
   }
 
+  // Nút đóng (×) cho mọi popup: ẩn overlay gần nhất, hoặc điều hướng nếu có data-close-href.
+  function wireModalClose() {
+    document.querySelectorAll('.modal-close').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const href = btn.getAttribute('data-close-href');
+        if (href) { location.href = href; return; }
+        const ov = btn.closest('.overlay');
+        if (ov) ov.classList.add('hidden');
+      });
+    });
+  }
+
   function highlightActive() {
     const page = location.pathname.split('/').pop() || 'index.html';
     document.querySelectorAll('.nav-menu a').forEach((a) => {
@@ -50,6 +63,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     wireMobileMenu();
+    wireModalClose();
     highlightActive();
     if (window.API) {
       refreshAuthUI();

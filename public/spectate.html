@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xem trận trực tiếp — Đánh Cờ Tướng Online</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/board.css" />
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="container nav-inner">
+        <a class="brand" href="index.html"><span class="logo">將</span><span>Cờ Tướng Online</span></a>
+        <button class="nav-toggle" aria-label="Menu">☰</button>
+        <ul class="nav-menu">
+          <li><a href="index.html">Trang chủ</a></li>
+          <li><a href="play.html">Chơi với máy</a></li>
+          <li><a href="rooms.html">Danh sách phòng</a></li>
+          <li><a href="play-online.html">Chơi với người</a></li>
+          <li><a href="leaderboard.html">Xếp hạng</a></li>
+          <li><a href="profile.html" data-auth="user" style="display: none">Hồ sơ</a></li>
+        </ul>
+        <div class="nav-actions">
+          <a class="btn btn-ghost" href="rooms.html">← Danh sách phòng</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="container">
+      <div class="play-layout">
+        <div class="board-col">
+          <div class="player-bar" id="bar-black">
+            <div class="who"><span class="dot black"></span> <span id="name-black">Đen</span></div>
+          </div>
+          <div id="board"></div>
+          <div class="player-bar active" id="bar-red">
+            <div class="who"><span class="dot red"></span> <span id="name-red">Đỏ</span></div>
+          </div>
+        </div>
+
+        <aside class="side-panel">
+          <div class="panel">
+            <h3>👁 Xem trực tiếp <span id="live-dot" class="live-dot"></span></h3>
+            <div id="status-msg">Đang kết nối…</div>
+          </div>
+          <div class="panel">
+            <h3>Lịch sử nước đi</h3>
+            <div id="move-list"></div>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <script src="js/engine/xiangqi.js"></script>
+    <script src="js/board.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/spectate.js"></script>
+    <script src="js/ui.js"></script>
+  </body>
+</html>

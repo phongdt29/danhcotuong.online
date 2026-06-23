@@ -691,6 +691,21 @@ table.games th {
   padding: 14px 6px;
 }
 
+/* Chấm "live" nhấp nháy khi xem trực tiếp */
+.live-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  margin-left: 4px;
+  animation: livepulse 1.2s ease-in-out infinite;
+}
+@keyframes livepulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.5); }
+  50% { opacity: 0.5; box-shadow: 0 0 0 6px rgba(255, 77, 79, 0); }
+}
+
 /* Khung đề nghị cầu hòa / hoàn nước */
 .offer-box {
   margin-top: 10px;

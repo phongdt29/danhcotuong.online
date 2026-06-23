@@ -47,15 +47,44 @@ module.exports = function attachMatch(server) {
     }
     return list;
   }
-  // Gửi danh sách phòng cho tất cả người đang ở sảnh (cập nhật trực tiếp).
+  // Danh sách các trận ĐANG ĐÁNH (cho khán giả vào xem).
+  function liveMatches() {
+    const list = [];
+    for (const room of rooms.values()) {
+      if (room.started && !room.ended && room.code) {
+        const red = room.players.find((p) => p.color === 'r');
+        const black = room.players.find((p) => p.color === 'b');
+        list.push({
+          code: room.code,
+          red: red ? red.name : '?',
+          black: black ? black.name : '?',
+          moves: room.moves ? room.moves.length : 0,
+        });
+      }
+    }
+    return list;
+  }
+  function roomsPayload() {
+    return { type: 'rooms', rooms: openRooms(), live: liveMatches() };
+  }
+  // Gửi danh sách phòng + trận đang đánh cho tất cả người ở sảnh (cập nhật trực tiếp).
   function broadcastRooms() {
-    const payload = JSON.stringify({ type: 'rooms', rooms: openRooms() });
+    const payload = JSON.stringify(roomsPayload());
     for (const ws of lobby) if (isOpen(ws)) ws.send(payload);
+  }
+  // Báo cho khán giả của 1 phòng.
+  function toSpectators(room, obj) {
+    if (!room.spectators) return;
+    const payload = JSON.stringify(obj);
+    for (const s of room.spectators) if (isOpen(s)) s.send(payload);
   }
 
   function startRoom(room) {
     room.started = true;
+    room.ended = false;
     room.turn = 'r'; // Đỏ đi trước
+    room.moves = []; // nước đi để khán giả vào giữa chừng dựng lại
+    if (!room.spectators) room.spectators = new Set();
     const [a, b] = room.players;
     a.color = 'r';
     b.color = 'b';
@@ -63,6 +92,8 @@ module.exports = function attachMatch(server) {
     lobby.delete(b);
     send(a, { type: 'start', color: 'r', opponent: b.name });
     send(b, { type: 'start', color: 'b', opponent: a.name });
+    // Khán giả (nếu có, vd sau khi chơi lại) xem ván mới
+    toSpectators(room, { type: 'spectate-start', red: a.name, black: b.name, moves: [], turn: 'r' });
     broadcastRooms(); // phòng này không còn mở -> cập nhật danh sách
   }
 
@@ -71,8 +102,10 @@ module.exports = function attachMatch(server) {
     if (!room) return;
     const other = opponent(room, ws);
     if (other && room.started) send(other, { type: 'opponent-left' });
+    toSpectators(room, { type: 'spectate-end', text: 'Trận đã kết thúc (người chơi thoát).' });
     if (room.code) rooms.delete(room.code);
     room.players.forEach((p) => { p.room = null; });
+    broadcastRooms(); // trận biến mất khỏi danh sách đang đánh
   }
 
   wss.on('connection', (ws) => {
@@ -80,9 +113,10 @@ module.exports = function attachMatch(server) {
     ws.room = null;
     ws.color = null;
     ws.wantRematch = false;
+    ws.spectating = null;
     lobby.add(ws);
     send(ws, { type: 'welcome' });
-    send(ws, { type: 'rooms', rooms: openRooms() }); // gửi danh sách phòng ngay
+    send(ws, roomsPayload()); // gửi danh sách phòng + trận đang đánh ngay
 
     ws.on('message', (data) => {
       let msg;
@@ -94,7 +128,10 @@ module.exports = function attachMatch(server) {
         case 'quick':
           if (ws.room) return;
           if (isOpen(quickWaiting) && quickWaiting !== ws) {
-            const room = { players: [quickWaiting, ws], code: null };
+            let qcode;
+            do { qcode = makeCode(); } while (rooms.has(qcode));
+            const room = { players: [quickWaiting, ws], code: qcode, host: quickWaiting.name, spectators: new Set() };
+            rooms.set(qcode, room); // có mã -> khán giả xem được
             quickWaiting.room = room;
             ws.room = room;
             quickWaiting = null;
@@ -106,17 +143,37 @@ module.exports = function attachMatch(server) {
           break;
         case 'list':
           lobby.add(ws); // yêu cầu danh sách = đang ở sảnh
-          send(ws, { type: 'rooms', rooms: openRooms() });
+          send(ws, roomsPayload());
           break;
         case 'create': {
           if (ws.room) return;
           let code;
           do { code = makeCode(); } while (rooms.has(code));
-          const room = { players: [ws], code, host: ws.name };
+          const room = { players: [ws], code, host: ws.name, spectators: new Set() };
           ws.room = room;
           rooms.set(code, room);
           send(ws, { type: 'created', code });
           broadcastRooms(); // có phòng mới -> báo cho mọi người ở sảnh
+          break;
+        }
+        case 'spectate': {
+          const code = String(msg.code || '').toUpperCase().trim();
+          const room = rooms.get(code);
+          if (!room || !room.started) return send(ws, { type: 'error', message: 'Trận không tồn tại hoặc đã kết thúc' });
+          if (!room.spectators) room.spectators = new Set();
+          lobby.delete(ws);
+          if (ws.spectating && ws.spectating.spectators) ws.spectating.spectators.delete(ws);
+          room.spectators.add(ws);
+          ws.spectating = room;
+          const red = room.players.find((p) => p.color === 'r');
+          const black = room.players.find((p) => p.color === 'b');
+          send(ws, {
+            type: 'spectate-start',
+            red: red ? red.name : '?',
+            black: black ? black.name : '?',
+            moves: room.moves || [],
+            turn: room.turn,
+          });
           break;
         }
         case 'join': {
@@ -135,25 +192,42 @@ module.exports = function attachMatch(server) {
           if (!room || !room.started) return;
           if (ws.color !== room.turn) return; // không đúng lượt -> bỏ qua
           if (!msg.from || !msg.to) return;
+          if (!room.moves) room.moves = [];
+          room.moves.push({ from: msg.from, to: msg.to });
           room.turn = room.turn === 'r' ? 'b' : 'r';
           send(opponent(room, ws), { type: 'move', from: msg.from, to: msg.to });
+          toSpectators(room, { type: 'move', from: msg.from, to: msg.to });
           break;
         }
         case 'resign': {
           const room = ws.room;
           if (!room || !room.started) return;
           send(opponent(room, ws), { type: 'resign' });
+          room.ended = true;
+          toSpectators(room, { type: 'spectate-end', text: (ws.name || 'Một bên') + ' đã xin thua.' });
+          broadcastRooms();
           break;
         }
         case 'timeout': {
           const room = ws.room;
           if (!room || !room.started) return;
           send(opponent(room, ws), { type: 'opponent-timeout' });
+          room.ended = true;
+          toSpectators(room, { type: 'spectate-end', text: (ws.name || 'Một bên') + ' đã hết giờ.' });
+          broadcastRooms();
+          break;
+        }
+        case 'draw-accept': {
+          const room = ws.room;
+          if (!room || !room.started) return;
+          send(opponent(room, ws), { type: 'draw-accept' });
+          room.ended = true;
+          toSpectators(room, { type: 'spectate-end', text: 'Hai bên đồng ý hòa.' });
+          broadcastRooms();
           break;
         }
         // Cầu hòa / xin hoàn nước: chuyển tiếp đề nghị & phản hồi cho đối thủ.
         case 'draw-offer':
-        case 'draw-accept':
         case 'draw-decline':
         case 'takeback-offer':
         case 'takeback-accept':
@@ -198,6 +272,7 @@ module.exports = function attachMatch(server) {
 
     ws.on('close', () => {
       lobby.delete(ws);
+      if (ws.spectating && ws.spectating.spectators) { ws.spectating.spectators.delete(ws); ws.spectating = null; }
       if (quickWaiting === ws) quickWaiting = null;
       if (ws.room) {
         const wasOpen = !ws.room.started;
