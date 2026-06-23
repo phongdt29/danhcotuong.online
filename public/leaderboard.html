@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bảng xếp hạng — Đánh Cờ Tướng Online</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="container nav-inner">
+        <a class="brand" href="index.html">
+          <span class="logo">將</span>
+          <span>Cờ Tướng Online</span>
+        </a>
+        <button class="nav-toggle" aria-label="Menu">☰</button>
+        <ul class="nav-menu">
+          <li><a href="index.html">Trang chủ</a></li>
+          <li><a href="play.html">Chơi với máy</a></li>
+          <li><a href="rooms.html">Danh sách phòng</a></li>
+          <li><a href="play-online.html">Chơi với người</a></li>
+          <li><a href="leaderboard.html">Xếp hạng</a></li>
+          <li><a href="profile.html" data-auth="user" style="display: none">Hồ sơ</a></li>
+        </ul>
+        <div class="nav-actions">
+          <a class="btn btn-ghost" href="login.html" data-auth="guest">Đăng nhập</a>
+          <a class="btn btn-primary" href="register.html" data-auth="guest">Đăng ký</a>
+          <span data-auth="user" style="display: none; font-weight: 700"
+            >Xin chào, <span data-user-name>bạn</span></span
+          >
+          <a class="btn btn-ghost" href="#" data-auth="user" data-action="logout" style="display: none"
+            >Đăng xuất</a
+          >
+        </div>
+      </div>
+    </header>
+
+    <main class="container" style="max-width: 720px">
+      <section class="section">
+        <h1 style="margin: 0 0 4px">🏆 Bảng xếp hạng</h1>
+        <p class="sub">Cao thủ cờ tướng theo điểm ELO</p>
+        <div class="panel">
+          <table class="games" id="lb-table">
+            <thead>
+              <tr>
+                <th style="width: 48px">#</th>
+                <th>Người chơi</th>
+                <th style="width: 70px">ELO</th>
+                <th style="width: 60px">Thắng</th>
+                <th style="width: 60px">Thua</th>
+                <th style="width: 60px">Hòa</th>
+              </tr>
+            </thead>
+            <tbody id="lb-body">
+              <tr><td colspan="6" style="text-align: center; color: var(--c-muted)">Đang tải…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script>
+      (async function () {
+        const body = document.getElementById('lb-body');
+        function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+        try {
+          const data = await window.API.leaderboard();
+          const players = (data && data.players) || [];
+          if (!players.length) {
+            body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--c-muted)">Chưa có người chơi nào.</td></tr>';
+            return;
+          }
+          const medal = ['🥇', '🥈', '🥉'];
+          body.innerHTML = players
+            .map((p, i) => {
+              const rank = medal[i] || (i + 1);
+              return (
+                '<tr><td>' + rank + '</td><td><b>' + esc(p.username) + '</b></td><td>' +
+                p.elo + '</td><td>' + p.wins + '</td><td>' + p.losses + '</td><td>' + p.draws + '</td></tr>'
+              );
+            })
+            .join('');
+        } catch (e) {
+          body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#ff6b6b">Không tải được bảng xếp hạng.</td></tr>';
+        }
+      })();
+    </script>
+  </body>
+</html>

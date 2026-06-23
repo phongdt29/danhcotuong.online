@@ -28,4 +28,14 @@ async function listByUser(userId, limit = 20) {
   return rows;
 }
 
-module.exports = { saveGame, listByUser };
+// Lấy 1 ván của chính người dùng (kèm pgn để xem lại).
+async function getById(userId, id) {
+  const [rows] = await pool.query(
+    `SELECT id, opponent_type, result, moves_count, duration_sec, pgn, created_at
+     FROM games WHERE id = ? AND user_id = ? LIMIT 1`,
+    [id, userId]
+  );
+  return rows[0] || null;
+}
+
+module.exports = { saveGame, listByUser, getById };

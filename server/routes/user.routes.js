@@ -5,6 +5,15 @@ const express = require('express');
 const router = express.Router();
 const userService = require('../services/user.service');
 
+// Bảng xếp hạng (đặt TRƯỚC /:id/stats để không bị nuốt route)
+router.get('/leaderboard', async (req, res) => {
+  try {
+    res.json({ players: await userService.leaderboard(20) });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi máy chủ' });
+  }
+});
+
 router.get('/:id/stats', async (req, res) => {
   try {
     const user = await userService.findById(parseInt(req.params.id, 10));

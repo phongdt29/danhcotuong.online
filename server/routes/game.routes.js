@@ -41,4 +41,16 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
+// Chi tiết 1 ván (kèm pgn) để xem lại — chỉ chủ ván mới xem được.
+router.get('/:id', requireAuth, async (req, res) => {
+  try {
+    const game = await gameService.getById(req.session.userId, parseInt(req.params.id, 10));
+    if (!game) return res.status(404).json({ error: 'Không tìm thấy ván đấu' });
+    res.json({ game });
+  } catch (err) {
+    console.error('get game error:', err.message);
+    res.status(500).json({ error: 'Lỗi máy chủ' });
+  }
+});
+
 module.exports = router;

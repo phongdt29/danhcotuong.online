@@ -124,6 +124,15 @@
   border-radius: 50%;
 }
 
+/* Lật bàn 180° cho bên Đen, quay ngược lại quân/điểm để chữ không bị lộn ngược */
+.board-frame.flip .board-inner {
+  transform: rotate(180deg);
+}
+.board-frame.flip .bpiece,
+.board-frame.flip .bpoint {
+  transform: translate(-50%, -50%) rotate(180deg);
+}
+
 .bpiece.in-check {
   animation: checkpulse 0.7s ease-in-out infinite alternate;
 }

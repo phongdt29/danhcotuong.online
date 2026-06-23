@@ -20,6 +20,11 @@
     capturedByRed: [],
     capturedByBlack: [],
     auto: null,
+    totalSec: 600,
+    timeLeft: { r: 600, b: 600 },
+    timerId: null,
+    pendingOffer: null, // 'draw' | 'takeback' (đề nghị đang chờ mình trả lời)
+    moves: [], // lưu nước đi để xem lại (replay)
   };
 
   const GLYPH = {
@@ -62,6 +67,28 @@
   function sq(x, y) { return String.fromCharCode(65 + x) + (10 - y); }
   function status(msg) { const el = $('status-msg'); if (el) el.textContent = msg; }
   function lobbyStatus(msg) { const el = $('lobby-status'); if (el) el.textContent = msg; }
+
+  /* ---------------- Đồng hồ thi đấu ---------------- */
+  function fmtTime(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+  function renderTimers() {
+    const tr = $('timer-red'), tb = $('timer-black');
+    if (tr) tr.textContent = fmtTime(state.timeLeft.r);
+    if (tb) tb.textContent = fmtTime(state.timeLeft.b);
+  }
+  function startTimer() {
+    stopTimer();
+    state.timerId = setInterval(() => {
+      if (state.over || !state.game) return;
+      const side = state.game.turn; // 'r' | 'b'
+      state.timeLeft[side] -= 1;
+      renderTimers();
+      if (state.timeLeft[side] <= 0) {
+        if (side === state.myColor) sendWs({ type: 'timeout' }); // mình hết giờ -> báo đối thủ
+        endGame(side === 'r' ? 'b' : 'r', 'Hết giờ');
+      }
+    }, 1000);
+  }
+  function stopTimer() { if (state.timerId) clearInterval(state.timerId); state.timerId = null; }
 
   /* ---------------- WebSocket ---------------- */
   function connect() {
@@ -119,6 +146,31 @@
         break;
       case 'opponent-left':
         if (!state.over) endGame(state.myColor, 'Đối thủ đã thoát');
+        break;
+      case 'opponent-timeout':
+        if (!state.over) endGame(state.myColor, 'Đối thủ hết giờ');
+        break;
+      case 'draw-offer':
+        showOffer('draw', 'Đối thủ xin cầu hòa. Bạn đồng ý?');
+        break;
+      case 'draw-accept':
+        endGame('draw', 'Hai bên đồng ý hòa');
+        break;
+      case 'draw-decline':
+        status('Đối thủ từ chối cầu hòa.');
+        break;
+      case 'takeback-offer':
+        showOffer('takeback', 'Đối thủ xin hoàn nước. Bạn đồng ý?');
+        break;
+      case 'takeback-accept':
+        applyTakeback(state.myColor); // đối thủ đồng ý cho MÌNH hoàn nước
+        status('Đối thủ đồng ý. Đã hoàn nước.');
+        break;
+      case 'takeback-decline':
+        status('Đối thủ từ chối hoàn nước.');
+        break;
+      case 'rematch':
+        $('rematch-status').textContent = 'Đối thủ muốn chơi lại! Bấm "🔄 Chơi lại" để bắt đầu.';
         break;
       case 'rooms':
         renderRooms(msg.rooms || []);
@@ -186,12 +238,20 @@
     state.startTs = Date.now();
     state.capturedByRed = [];
     state.capturedByBlack = [];
+    state.moves = [];
+    state.pendingOffer = null;
+    state.timeLeft = { r: state.totalSec, b: state.totalSec };
     state.game = new X.Game();
 
     state.board = new window.Board($('board'), {
       humanColor: color,
       onMove: onMyMove,
     });
+    // Lật bàn cho bên Đen để quân của mình ở phía dưới
+    const flip = color === 'b';
+    $('board').classList.toggle('flip', flip);
+    const col = document.querySelector('.board-col');
+    if (col) col.classList.toggle('flip', flip);
     state.board.clearSelection();
     state.board.setLastMove(null);
     state.board.render(state.game);
@@ -207,13 +267,19 @@
     }
 
     $('btn-resign').disabled = false;
+    $('btn-draw').disabled = false;
     $('chat-input').disabled = false;
     $('chat-send').disabled = false;
     $('lobby-overlay').classList.add('hidden');
+    $('result-modal').classList.add('hidden');
+    $('rematch-status').textContent = '';
+    offerHide();
     $('chat-log').innerHTML = '';
     renderCaptured();
     renderHistory();
+    renderTimers();
     updateTurn();
+    startTimer();
   }
 
   function updateTurn() {
@@ -221,6 +287,8 @@
     state.board.setInteractive(myTurn);
     $('bar-red').classList.toggle('active', !state.over && state.game.turn === 'r');
     $('bar-black').classList.toggle('active', !state.over && state.game.turn === 'b');
+    $('btn-takeback').disabled = state.over || state.game.history.length === 0;
+    renderTimers();
     if (state.over) return;
     status(myTurn ? 'Tới lượt BẠN đi.' : 'Đang chờ đối thủ đi…');
   }
@@ -244,6 +312,9 @@
   }
 
   function afterMove(rec) {
+    state.moves.push({ from: { x: rec.from.x, y: rec.from.y }, to: { x: rec.to.x, y: rec.to.y } });
+    state.pendingOffer = null; // có nước đi mới -> huỷ đề nghị đang chờ
+    offerHide();
     if (rec.captured) {
       if (X.colorOf(rec.captured) === X.BLACK) state.capturedByRed.push(rec.captured);
       else state.capturedByBlack.push(rec.captured);
@@ -274,14 +345,20 @@
   function endGame(winnerColor, reason) {
     if (state.over) return;
     state.over = true;
+    stopTimer();
     if (state.board) state.board.setInteractive(false);
-    $('btn-resign').disabled = true;
+    ['btn-resign', 'btn-draw', 'btn-takeback'].forEach((id) => { $(id).disabled = true; });
     $('bar-red').classList.remove('active');
     $('bar-black').classList.remove('active');
+    state.pendingOffer = null;
+    offerHide();
 
     let title;
     let result = null;
-    if (winnerColor == null) {
+    if (winnerColor === 'draw') {
+      title = 'Hòa cờ 🤝';
+      result = 'draw';
+    } else if (winnerColor == null) {
       title = 'Ván kết thúc';
     } else if (winnerColor === state.myColor) {
       title = 'Bạn THẮNG! 🎉';
@@ -300,6 +377,8 @@
     if (!modal) return;
     $('result-title').textContent = title;
     $('result-reason').textContent = reason;
+    $('btn-rematch').disabled = false;
+    $('rematch-status').textContent = '';
     modal.classList.remove('hidden');
   }
 
@@ -314,6 +393,7 @@
         result,
         moves_count: state.game.history.length,
         duration_sec: duration,
+        pgn: JSON.stringify(state.moves || []),
       });
     } catch (e) {}
   }
@@ -354,6 +434,56 @@
     return '<span class="cap-chip ' + (c === X.RED ? 'red' : 'black') + '">' + GLYPH[c][X.typeOf(p)] + '</span>';
   }
 
+  /* ---------------- Cầu hòa / Hoàn nước ---------------- */
+  function showOffer(type, text) {
+    state.pendingOffer = type;
+    $('offer-text').textContent = text;
+    $('offer-box').classList.remove('hidden');
+  }
+  function offerHide() { const b = $('offer-box'); if (b) b.classList.add('hidden'); }
+  function offerAccept() {
+    const t = state.pendingOffer;
+    offerHide();
+    state.pendingOffer = null;
+    if (t === 'draw') {
+      sendWs({ type: 'draw-accept' });
+      endGame('draw', 'Hai bên đồng ý hòa');
+    } else if (t === 'takeback') {
+      sendWs({ type: 'takeback-accept' });
+      applyTakeback(state.myColor === 'r' ? 'b' : 'r'); // đối thủ (người xin) được hoàn nước
+    }
+  }
+  function offerDecline() {
+    const t = state.pendingOffer;
+    offerHide();
+    state.pendingOffer = null;
+    if (t === 'draw') sendWs({ type: 'draw-decline' });
+    else if (t === 'takeback') sendWs({ type: 'takeback-decline' });
+  }
+
+  function undoOne() {
+    const rec = state.game.undo();
+    if (!rec) return;
+    state.moves.pop();
+    if (rec.captured) {
+      if (X.colorOf(rec.captured) === X.BLACK) state.capturedByRed.pop();
+      else state.capturedByBlack.pop();
+    }
+  }
+  // Hoàn nước cho tới khi tới lượt của `requesterColor` (người xin hoàn), tối đa 2 nước.
+  function applyTakeback(requesterColor) {
+    if (state.over || !state.game || state.game.history.length === 0) return;
+    let guard = 0;
+    do { undoOne(); guard++; } while (state.game.history.length > 0 && state.game.turn !== requesterColor && guard < 4);
+    const last = state.game.history[state.game.history.length - 1];
+    state.board.setLastMove(last ? { from: last.from, to: last.to } : null);
+    state.board.clearSelection();
+    state.board.render(state.game);
+    renderCaptured();
+    renderHistory();
+    updateTurn();
+  }
+
   /* ---------------- Chat ---------------- */
   function appendChat(who, text) {
     const log = $('chat-log');
@@ -380,11 +510,20 @@
   function resetToLobby() {
     state.over = true;
     state.game = null;
-    if (state.board) { $('board').innerHTML = ''; state.board = null; }
+    stopTimer();
+    state.pendingOffer = null;
+    offerHide();
+    if (state.board) {
+      $('board').innerHTML = '';
+      $('board').classList.remove('flip');
+      const col = document.querySelector('.board-col');
+      if (col) col.classList.remove('flip');
+      state.board = null;
+    }
     $('result-modal').classList.add('hidden');
     $('lobby-overlay').classList.remove('hidden');
     hideWaiting();
-    $('btn-resign').disabled = true;
+    ['btn-resign', 'btn-draw', 'btn-takeback'].forEach((id) => { $(id).disabled = true; });
     $('chat-input').disabled = true;
     $('chat-send').disabled = true;
     lobbyStatus(state.ws && state.ws.readyState === WebSocket.OPEN ? 'Chọn cách vào trận.' : 'Đang kết nối…');
@@ -419,6 +558,23 @@
       if (state.over || !state.game) return;
       sendWs({ type: 'resign' });
       endGame(state.myColor === 'r' ? 'b' : 'r', 'Bạn xin thua');
+    });
+    $('btn-draw').addEventListener('click', () => {
+      if (state.over || !state.game) return;
+      sendWs({ type: 'draw-offer' });
+      status('Đã gửi lời cầu hòa, chờ đối thủ trả lời…');
+    });
+    $('btn-takeback').addEventListener('click', () => {
+      if (state.over || !state.game || state.game.history.length === 0) return;
+      sendWs({ type: 'takeback-offer' });
+      status('Đã xin hoàn nước, chờ đối thủ đồng ý…');
+    });
+    $('offer-yes').addEventListener('click', offerAccept);
+    $('offer-no').addEventListener('click', offerDecline);
+    $('btn-rematch').addEventListener('click', () => {
+      sendWs({ type: 'rematch' });
+      $('btn-rematch').disabled = true;
+      $('rematch-status').textContent = 'Đã sẵn sàng chơi lại, chờ đối thủ…';
     });
     $('btn-new').addEventListener('click', resetToLobby);
     $('btn-again').addEventListener('click', resetToLobby);

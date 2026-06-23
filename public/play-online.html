@@ -20,6 +20,7 @@
           <li><a href="play.html">Chơi với máy</a></li>
           <li><a href="rooms.html">Danh sách phòng</a></li>
           <li><a href="play-online.html">Chơi với người</a></li>
+          <li><a href="leaderboard.html">Xếp hạng</a></li>
           <li><a href="profile.html" data-auth="user" style="display: none">Hồ sơ</a></li>
         </ul>
         <div class="nav-actions">
@@ -42,6 +43,7 @@
           <div class="player-bar" id="bar-black">
             <div class="who"><span class="dot black"></span> <span id="name-black">Đối thủ (Đen)</span></div>
             <div class="captured" id="captured-black"></div>
+            <div class="clock" id="timer-black">10:00</div>
           </div>
 
           <div id="board"></div>
@@ -49,6 +51,7 @@
           <div class="player-bar active" id="bar-red">
             <div class="who"><span class="dot red"></span> <span id="name-red">Bạn (Đỏ)</span></div>
             <div class="captured" id="captured-red"></div>
+            <div class="clock" id="timer-red">10:00</div>
           </div>
         </div>
 
@@ -62,8 +65,17 @@
           <div class="panel">
             <h3>Điều khiển</h3>
             <div class="controls">
+              <button class="btn btn-ghost" id="btn-draw" disabled>🤝 Cầu hòa</button>
+              <button class="btn btn-ghost" id="btn-takeback" disabled>↶ Hoàn nước</button>
               <button class="btn btn-ghost" id="btn-resign" disabled>🏳 Xin thua</button>
               <button class="btn btn-primary" id="btn-new">＋ Trận mới</button>
+            </div>
+            <div id="offer-box" class="offer-box hidden">
+              <span id="offer-text"></span>
+              <div class="offer-actions">
+                <button class="btn btn-primary" id="offer-yes">Đồng ý</button>
+                <button class="btn btn-ghost" id="offer-no">Từ chối</button>
+              </div>
             </div>
           </div>
 
@@ -132,9 +144,11 @@
         <h2 id="result-title">Kết thúc</h2>
         <p class="text-muted" id="result-reason"></p>
         <div class="controls" style="margin-top: 18px">
-          <button class="btn btn-primary" id="btn-again">Trận mới</button>
+          <button class="btn btn-accent" id="btn-rematch">🔄 Chơi lại</button>
+          <button class="btn btn-ghost" id="btn-again">Trận mới</button>
           <a class="btn btn-ghost" href="index.html">Về trang chủ</a>
         </div>
+        <p class="text-muted" id="rematch-status" style="margin-top: 10px"></p>
       </div>
     </div>
 

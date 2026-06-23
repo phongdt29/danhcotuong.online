@@ -48,6 +48,16 @@ async function applyResult(userId, result) {
   );
 }
 
+// Bảng xếp hạng theo ELO (cao thủ nhất lên đầu).
+async function leaderboard(limit = 20) {
+  const [rows] = await pool.query(
+    `SELECT id, username, elo, wins, losses, draws
+     FROM users ORDER BY elo DESC, wins DESC, id ASC LIMIT ?`,
+    [Math.max(1, Math.min(100, limit))]
+  );
+  return rows;
+}
+
 module.exports = {
   findByUsername,
   findById,
@@ -55,4 +65,5 @@ module.exports = {
   createUser,
   verifyCredentials,
   applyResult,
+  leaderboard,
 };

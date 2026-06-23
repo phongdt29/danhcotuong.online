@@ -79,6 +79,7 @@ module.exports = function attachMatch(server) {
     ws.name = 'Khách';
     ws.room = null;
     ws.color = null;
+    ws.wantRematch = false;
     lobby.add(ws);
     send(ws, { type: 'welcome' });
     send(ws, { type: 'rooms', rooms: openRooms() }); // gửi danh sách phòng ngay
@@ -142,6 +143,39 @@ module.exports = function attachMatch(server) {
           const room = ws.room;
           if (!room || !room.started) return;
           send(opponent(room, ws), { type: 'resign' });
+          break;
+        }
+        case 'timeout': {
+          const room = ws.room;
+          if (!room || !room.started) return;
+          send(opponent(room, ws), { type: 'opponent-timeout' });
+          break;
+        }
+        // Cầu hòa / xin hoàn nước: chuyển tiếp đề nghị & phản hồi cho đối thủ.
+        case 'draw-offer':
+        case 'draw-accept':
+        case 'draw-decline':
+        case 'takeback-offer':
+        case 'takeback-accept':
+        case 'takeback-decline': {
+          const room = ws.room;
+          if (!room || !room.started) return;
+          send(opponent(room, ws), { type: msg.type });
+          break;
+        }
+        case 'rematch': {
+          const room = ws.room;
+          if (!room || !room.started) return;
+          ws.wantRematch = true;
+          const other = opponent(room, ws);
+          if (other && other.wantRematch) {
+            ws.wantRematch = false;
+            other.wantRematch = false;
+            room.players.reverse(); // đổi bên cho công bằng
+            startRoom(room);
+          } else {
+            send(other, { type: 'rematch' }); // báo đối thủ muốn chơi lại
+          }
           break;
         }
         case 'chat': {

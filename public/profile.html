@@ -14,6 +14,9 @@
         <ul class="nav-menu">
           <li><a href="index.html">Trang chủ</a></li>
           <li><a href="play.html">Chơi với máy</a></li>
+          <li><a href="rooms.html">Danh sách phòng</a></li>
+          <li><a href="play-online.html">Chơi với người</a></li>
+          <li><a href="leaderboard.html">Xếp hạng</a></li>
           <li><a href="profile.html">Hồ sơ</a></li>
         </ul>
         <div class="nav-actions">
@@ -53,10 +56,11 @@
                 <th>Kết quả</th>
                 <th>Số nước</th>
                 <th>Thời lượng</th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="games-body">
-              <tr><td colspan="5" class="text-muted">Đang tải…</td></tr>
+              <tr><td colspan="6" class="text-muted">Đang tải…</td></tr>
             </tbody>
           </table>
         </div>
@@ -89,7 +93,7 @@
         try {
           const { games } = await window.API.myGames();
           if (!games.length) {
-            body.innerHTML = '<tr><td colspan="5" class="text-muted">Chưa có ván nào. Hãy chơi thử!</td></tr>';
+            body.innerHTML = '<tr><td colspan="6" class="text-muted">Chưa có ván nào. Hãy chơi thử!</td></tr>';
             return;
           }
           const fmt = (s) => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
@@ -111,7 +115,9 @@
                 g.moves_count +
                 '</td><td>' +
                 fmt(g.duration_sec) +
-                '</td></tr>'
+                '</td><td><a class="btn btn-ghost" style="padding:4px 12px" href="replay.html?id=' +
+                g.id +
+                '">▶ Xem</a></td></tr>'
               );
             })
             .join('');

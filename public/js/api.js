@@ -36,5 +36,7 @@
     saveGame: (game) => req('POST', '/api/games', game),
     myGames: () => req('GET', '/api/games'),
     stats: (id) => req('GET', '/api/users/' + id + '/stats'),
+    leaderboard: () => req('GET', '/api/users/leaderboard'),
+    gameDetail: (id) => req('GET', '/api/games/' + id),
   };
 })(window);

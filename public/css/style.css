@@ -335,6 +335,10 @@ img {
   align-items: center;
   gap: 14px;
 }
+/* Khi lật bàn (bên Đen): đưa thanh người chơi của mình xuống dưới */
+.board-col.flip #bar-red { order: 1; }
+.board-col.flip #board { order: 2; }
+.board-col.flip #bar-black { order: 3; }
 .player-bar {
   width: 100%;
   max-width: 540px;
@@ -685,6 +689,25 @@ table.games th {
   font-size: 0.9rem;
   text-align: center;
   padding: 14px 6px;
+}
+
+/* Khung đề nghị cầu hòa / hoàn nước */
+.offer-box {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-accent);
+  border-radius: 9px;
+  background: rgba(242, 177, 52, 0.12);
+  font-size: 0.92rem;
+}
+.offer-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.offer-actions .btn {
+  flex: 1;
+  padding: 7px 10px;
 }
 
 @media (max-width: 760px) {

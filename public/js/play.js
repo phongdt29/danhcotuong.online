@@ -248,6 +248,7 @@
         result,
         moves_count: state.game.history.length,
         duration_sec: duration,
+        pgn: JSON.stringify(state.game.history.map((h) => ({ from: h.from, to: h.to }))),
       });
     } catch (e) {
       /* không chặn người chơi nếu lưu lỗi */
