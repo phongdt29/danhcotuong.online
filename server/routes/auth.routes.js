@@ -8,7 +8,29 @@ const userService = require('../services/user.service');
 const USERNAME_RE = /^[a-zA-Z0-9_.]{3,50}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-router.post('/register', async (req, res) => {
+// Giới hạn số lần thử theo IP (chống dò mật khẩu / spam đăng ký).
+const attempts = new Map(); // ip -> { count, ts }
+const RL_WINDOW = 15 * 60 * 1000; // 15 phút
+const RL_MAX = 12;
+function rateLimit(req, res, next) {
+  const key = req.ip || (req.socket && req.socket.remoteAddress) || 'x';
+  const now = Date.now();
+  const rec = attempts.get(key);
+  if (!rec || now - rec.ts > RL_WINDOW) {
+    attempts.set(key, { count: 1, ts: now });
+  } else {
+    rec.count += 1;
+    if (rec.count > RL_MAX) {
+      return res.status(429).json({ error: 'Quá nhiều lần thử. Vui lòng đợi vài phút rồi thử lại.' });
+    }
+  }
+  if (attempts.size > 5000) {
+    for (const [k, v] of attempts) if (now - v.ts > RL_WINDOW) attempts.delete(k);
+  }
+  next();
+}
+
+router.post('/register', rateLimit, async (req, res) => {
   try {
     const username = (req.body.username || '').trim();
     const email = (req.body.email || '').trim().toLowerCase();
@@ -33,7 +55,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', rateLimit, async (req, res) => {
   try {
     const username = (req.body.username || '').trim();
     const password = req.body.password || '';

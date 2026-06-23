@@ -18,6 +18,7 @@
  *                     {type:'error',message}
  */
 const { WebSocketServer } = require('ws');
+const X = require('../../public/js/engine/xiangqi.js'); // engine luật cờ dùng chung (chống gian lận)
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // bỏ ký tự dễ nhầm (I,O,0,1)
 
@@ -84,6 +85,7 @@ module.exports = function attachMatch(server) {
     room.ended = false;
     room.turn = 'r'; // Đỏ đi trước
     room.moves = []; // nước đi để khán giả vào giữa chừng dựng lại
+    room.game = new X.Game(); // ván trên server để kiểm tra luật & phát hiện hết ván
     if (!room.spectators) room.spectators = new Set();
     const [a, b] = room.players;
     a.color = 'r';
@@ -189,14 +191,25 @@ module.exports = function attachMatch(server) {
         }
         case 'move': {
           const room = ws.room;
-          if (!room || !room.started) return;
-          if (ws.color !== room.turn) return; // không đúng lượt -> bỏ qua
+          if (!room || !room.started || room.ended) return;
+          if (ws.color !== room.turn) return; // không đúng lượt
           if (!msg.from || !msg.to) return;
-          if (!room.moves) room.moves = [];
+          // Kiểm tra luật bằng engine (chống gian lận): server là trọng tài
+          const rec = room.game.move(msg.from, msg.to);
+          if (!rec) return send(ws, { type: 'illegal' }); // nước phạm luật -> từ chối
           room.moves.push({ from: msg.from, to: msg.to });
-          room.turn = room.turn === 'r' ? 'b' : 'r';
+          room.turn = room.game.turn;
           send(opponent(room, ws), { type: 'move', from: msg.from, to: msg.to });
           toSpectators(room, { type: 'move', from: msg.from, to: msg.to });
+          // Phát hiện hết ván (chiếu hết / hết nước) ngay tại server
+          const st = room.game.status();
+          if (st.over) {
+            room.ended = true;
+            const winner = st.loser === 'r' ? 'b' : 'r';
+            const wName = (room.players.find((p) => p.color === winner) || {}).name || (winner === 'r' ? 'Đỏ' : 'Đen');
+            toSpectators(room, { type: 'spectate-end', text: wName + ' thắng (' + (st.reason === 'checkmate' ? 'chiếu hết' : 'hết nước') + ').' });
+            broadcastRooms();
+          }
           break;
         }
         case 'resign': {
@@ -226,11 +239,42 @@ module.exports = function attachMatch(server) {
           broadcastRooms();
           break;
         }
-        // Cầu hòa / xin hoàn nước: chuyển tiếp đề nghị & phản hồi cho đối thủ.
+        case 'takeback-offer': {
+          const room = ws.room;
+          if (!room || !room.started || room.ended) return;
+          room.takebackBy = ws.color; // ghi nhớ ai xin hoàn nước
+          send(opponent(room, ws), { type: 'takeback-offer' });
+          break;
+        }
+        case 'takeback-accept': {
+          const room = ws.room;
+          if (!room || !room.started || room.ended) return;
+          const reqColor = room.takebackBy || (ws.color === 'r' ? 'b' : 'r');
+          if (room.game && room.game.history.length > 0) {
+            let guard = 0;
+            do {
+              room.game.undo();
+              if (room.moves && room.moves.length) room.moves.pop();
+              guard++;
+            } while (room.game.history.length > 0 && room.game.turn !== reqColor && guard < 4);
+            room.turn = room.game.turn;
+          }
+          send(opponent(room, ws), { type: 'takeback-accept' });
+          // Đồng bộ lại thế cờ cho khán giả sau khi hoàn nước
+          const red = room.players.find((p) => p.color === 'r');
+          const black = room.players.find((p) => p.color === 'b');
+          toSpectators(room, {
+            type: 'spectate-start',
+            red: red ? red.name : '?',
+            black: black ? black.name : '?',
+            moves: room.moves || [],
+            turn: room.turn,
+          });
+          break;
+        }
+        // Cầu hòa & từ chối: chuyển tiếp cho đối thủ.
         case 'draw-offer':
         case 'draw-decline':
-        case 'takeback-offer':
-        case 'takeback-accept':
         case 'takeback-decline': {
           const room = ws.room;
           if (!room || !room.started) return;

@@ -141,6 +141,20 @@
       case 'move':
         onOpponentMove(msg.from, msg.to);
         break;
+      case 'illegal':
+        // Server từ chối nước vừa đi (chống gian lận) -> hoàn lại nước cuối của mình.
+        if (!state.over && state.game && state.game.history.length) {
+          undoOne();
+          const last = state.game.history[state.game.history.length - 1];
+          state.board.setLastMove(last ? { from: last.from, to: last.to } : null);
+          state.board.clearSelection();
+          state.board.render(state.game);
+          renderCaptured();
+          renderHistory();
+          updateTurn();
+          status('⚠ Nước đi không hợp lệ — đã hoàn lại.');
+        }
+        break;
       case 'resign':
         endGame(state.myColor, 'Đối thủ xin thua');
         break;
