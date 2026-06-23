@@ -30,11 +30,28 @@ function makeCode() {
 module.exports = function attachMatch(server) {
   const wss = new WebSocketServer({ server, path: '/ws' });
   let quickWaiting = null; // ws đang chờ ghép trận nhanh
-  const rooms = new Map(); // code -> { players:[ws,...], code, started, turn }
+  const rooms = new Map(); // code -> { players:[ws,...], code, host, started, turn }
+  const lobby = new Set(); // các ws đang ở sảnh (xem danh sách phòng)
 
   const isOpen = (ws) => ws && ws.readyState === ws.OPEN;
   const send = (ws, obj) => { if (isOpen(ws)) ws.send(JSON.stringify(obj)); };
   const opponent = (room, ws) => room.players.find((p) => p !== ws);
+
+  // Danh sách phòng đang mở (mới tạo, còn chờ người thứ 2).
+  function openRooms() {
+    const list = [];
+    for (const room of rooms.values()) {
+      if (!room.started && room.players.length === 1) {
+        list.push({ code: room.code, host: room.players[0].name || 'Khách' });
+      }
+    }
+    return list;
+  }
+  // Gửi danh sách phòng cho tất cả người đang ở sảnh (cập nhật trực tiếp).
+  function broadcastRooms() {
+    const payload = JSON.stringify({ type: 'rooms', rooms: openRooms() });
+    for (const ws of lobby) if (isOpen(ws)) ws.send(payload);
+  }
 
   function startRoom(room) {
     room.started = true;
@@ -42,8 +59,11 @@ module.exports = function attachMatch(server) {
     const [a, b] = room.players;
     a.color = 'r';
     b.color = 'b';
+    lobby.delete(a);
+    lobby.delete(b);
     send(a, { type: 'start', color: 'r', opponent: b.name });
     send(b, { type: 'start', color: 'b', opponent: a.name });
+    broadcastRooms(); // phòng này không còn mở -> cập nhật danh sách
   }
 
   function endRoomNotify(ws) {
@@ -59,7 +79,9 @@ module.exports = function attachMatch(server) {
     ws.name = 'Khách';
     ws.room = null;
     ws.color = null;
+    lobby.add(ws);
     send(ws, { type: 'welcome' });
+    send(ws, { type: 'rooms', rooms: openRooms() }); // gửi danh sách phòng ngay
 
     ws.on('message', (data) => {
       let msg;
@@ -81,14 +103,19 @@ module.exports = function attachMatch(server) {
             send(ws, { type: 'waiting' });
           }
           break;
+        case 'list':
+          lobby.add(ws); // yêu cầu danh sách = đang ở sảnh
+          send(ws, { type: 'rooms', rooms: openRooms() });
+          break;
         case 'create': {
           if (ws.room) return;
           let code;
           do { code = makeCode(); } while (rooms.has(code));
-          const room = { players: [ws], code };
+          const room = { players: [ws], code, host: ws.name };
           ws.room = room;
           rooms.set(code, room);
           send(ws, { type: 'created', code });
+          broadcastRooms(); // có phòng mới -> báo cho mọi người ở sảnh
           break;
         }
         case 'join': {
@@ -129,19 +156,23 @@ module.exports = function attachMatch(server) {
           if (ws.room && !ws.room.started) {
             if (ws.room.code) rooms.delete(ws.room.code);
             ws.room = null;
+            broadcastRooms(); // phòng đã huỷ -> cập nhật danh sách
           }
           break;
       }
     });
 
     ws.on('close', () => {
+      lobby.delete(ws);
       if (quickWaiting === ws) quickWaiting = null;
       if (ws.room) {
+        const wasOpen = !ws.room.started;
         if (ws.room.started) endRoomNotify(ws);
         else {
           if (ws.room.code) rooms.delete(ws.room.code);
           ws.room = null;
         }
+        if (wasOpen) broadcastRooms(); // chủ phòng thoát khi chưa bắt đầu
       }
     });
   });

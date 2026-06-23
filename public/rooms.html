@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Danh sách phòng — Đánh Cờ Tướng Online</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="container nav-inner">
+        <a class="brand" href="index.html">
+          <span class="logo">將</span>
+          <span>Cờ Tướng Online</span>
+        </a>
+        <button class="nav-toggle" aria-label="Menu">☰</button>
+        <ul class="nav-menu">
+          <li><a href="index.html">Trang chủ</a></li>
+          <li><a href="play.html">Chơi với máy</a></li>
+          <li><a href="rooms.html">Danh sách phòng</a></li>
+          <li><a href="play-online.html">Chơi với người</a></li>
+          <li><a href="profile.html" data-auth="user" style="display: none">Hồ sơ</a></li>
+        </ul>
+        <div class="nav-actions">
+          <a class="btn btn-ghost" href="login.html" data-auth="guest">Đăng nhập</a>
+          <a class="btn btn-primary" href="register.html" data-auth="guest">Đăng ký</a>
+          <span data-auth="user" style="display: none; font-weight: 700"
+            >Xin chào, <span data-user-name>bạn</span></span
+          >
+          <a class="btn btn-ghost" href="#" data-auth="user" data-action="logout" style="display: none"
+            >Đăng xuất</a
+          >
+        </div>
+      </div>
+    </header>
+
+    <main class="container" style="max-width: 720px">
+      <section class="section">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px">
+          <h1 style="margin: 0">♟ Phòng đang mở</h1>
+          <button class="btn btn-ghost" id="btn-refresh">↻ Làm mới</button>
+        </div>
+        <p class="sub" id="conn-status">Đang kết nối máy chủ…</p>
+
+        <div class="hero-actions" style="margin: 16px 0 22px">
+          <button class="btn btn-primary btn-lg" id="btn-quick" disabled>⚡ Tìm trận nhanh</button>
+          <button class="btn btn-accent btn-lg" id="btn-create" disabled>＋ Tạo phòng mới</button>
+        </div>
+
+        <div class="panel">
+          <h3>Phòng chờ người vào (<span id="room-count">0</span>)</h3>
+          <div id="room-list" class="room-list">
+            <div class="room-empty">Đang tải danh sách phòng…</div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top: 16px">
+          <h3>Vào bằng mã phòng</h3>
+          <div class="chat-row">
+            <input type="text" id="join-code" placeholder="VD: AB12" maxlength="4" style="text-transform: uppercase" />
+            <button class="btn btn-primary" id="btn-join">Vào</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/rooms.js"></script>
+    <script src="js/ui.js"></script>
+  </body>
+</html>

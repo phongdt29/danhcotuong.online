@@ -341,6 +341,12 @@
       });
     }
 
+    const closeSetupBtn = $('btn-close-setup');
+    if (closeSetupBtn) closeSetupBtn.addEventListener('click', () => {
+      const ov = $('setup-overlay');
+      if (ov) ov.classList.add('hidden');
+    });
+
     const undoBtn = $('btn-undo');
     if (undoBtn) undoBtn.addEventListener('click', undo);
 

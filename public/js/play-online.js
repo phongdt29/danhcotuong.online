@@ -19,6 +19,7 @@
     name: 'Khách',
     capturedByRed: [],
     capturedByBlack: [],
+    auto: null,
   };
 
   const GLYPH = {
@@ -72,6 +73,7 @@
       enableLobby(true);
       lobbyStatus('Đã kết nối. Chọn cách vào trận.');
       status('Đã kết nối máy chủ.');
+      if (state.auto) { doAuto(state.auto); state.auto = null; }
     };
     ws.onclose = () => {
       enableLobby(false);
@@ -88,6 +90,13 @@
 
   function sendWs(obj) {
     if (state.ws && state.ws.readyState === WebSocket.OPEN) state.ws.send(JSON.stringify(obj));
+  }
+
+  // Tự thực hiện hành động khi vào từ trang Danh sách phòng (?join=/?create=/?quick=).
+  function doAuto(a) {
+    if (a.type === 'join') { sendWs({ type: 'join', code: a.code }); lobbyStatus('Đang vào phòng ' + a.code + '…'); }
+    else if (a.type === 'create') { sendWs({ type: 'create' }); showWaiting('Đang tạo phòng…', null); }
+    else if (a.type === 'quick') { sendWs({ type: 'quick' }); showWaiting('Đang tìm đối thủ…', null); }
   }
 
   function handle(msg) {
@@ -111,6 +120,9 @@
       case 'opponent-left':
         if (!state.over) endGame(state.myColor, 'Đối thủ đã thoát');
         break;
+      case 'rooms':
+        renderRooms(msg.rooms || []);
+        break;
       case 'chat':
         appendChat('Đối thủ', msg.text);
         break;
@@ -122,7 +134,37 @@
 
   /* ---------------- Sảnh (lobby) ---------------- */
   function enableLobby(on) {
-    ['btn-quick', 'btn-create', 'btn-join'].forEach((id) => { const b = $(id); if (b) b.disabled = !on; });
+    ['btn-quick', 'btn-create', 'btn-join', 'btn-refresh'].forEach((id) => { const b = $(id); if (b) b.disabled = !on; });
+  }
+
+  function requestList() { sendWs({ type: 'list' }); }
+
+  function renderRooms(list) {
+    const box = $('room-list');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!list.length) {
+      box.innerHTML = '<div class="room-empty">Chưa có phòng nào đang mở. Hãy tạo phòng mới!</div>';
+      return;
+    }
+    list.forEach((r) => {
+      const row = document.createElement('div');
+      row.className = 'room-item';
+      const info = document.createElement('span');
+      info.className = 'room-info';
+      info.innerHTML = '<b>' + escapeHtml(r.host) + '</b><span class="room-code-sm">#' + escapeHtml(r.code) + '</span>';
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-primary';
+      btn.textContent = 'Vào';
+      btn.addEventListener('click', () => sendWs({ type: 'join', code: r.code }));
+      row.appendChild(info);
+      row.appendChild(btn);
+      box.appendChild(row);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
   function showWaiting(text, code) {
     $('waiting-box').classList.remove('hidden');
@@ -346,6 +388,7 @@
     $('chat-input').disabled = true;
     $('chat-send').disabled = true;
     lobbyStatus(state.ws && state.ws.readyState === WebSocket.OPEN ? 'Chọn cách vào trận.' : 'Đang kết nối…');
+    requestList(); // làm mới danh sách phòng khi quay lại sảnh
   }
 
   async function init() {
@@ -356,6 +399,12 @@
       else state.name = 'Khách-' + Math.floor(1000 + Math.random() * 9000);
     } catch (e) { state.name = 'Khách-' + Math.floor(1000 + Math.random() * 9000); }
 
+    // Hành động tự động khi đến từ trang Danh sách phòng (rooms.html)
+    const params = new URLSearchParams(location.search);
+    if (params.get('join')) state.auto = { type: 'join', code: String(params.get('join')).toUpperCase().trim() };
+    else if (params.get('create') === '1') state.auto = { type: 'create' };
+    else if (params.get('quick') === '1') state.auto = { type: 'quick' };
+
     $('btn-quick').addEventListener('click', () => { sendWs({ type: 'quick' }); showWaiting('Đang tìm đối thủ…', null); });
     $('btn-create').addEventListener('click', () => { sendWs({ type: 'create' }); showWaiting('Đang tạo phòng…', null); });
     $('btn-join').addEventListener('click', () => {
@@ -363,7 +412,8 @@
       if (code.length < 3) { lobbyStatus('Nhập mã phòng hợp lệ.'); return; }
       sendWs({ type: 'join', code });
     });
-    $('btn-cancel').addEventListener('click', () => { sendWs({ type: 'cancel' }); hideWaiting(); lobbyStatus('Đã huỷ. Chọn cách vào trận.'); });
+    $('btn-cancel').addEventListener('click', () => { sendWs({ type: 'cancel' }); hideWaiting(); requestList(); lobbyStatus('Đã huỷ. Chọn cách vào trận.'); });
+    $('btn-refresh').addEventListener('click', requestList);
 
     $('btn-resign').addEventListener('click', () => {
       if (state.over || !state.game) return;

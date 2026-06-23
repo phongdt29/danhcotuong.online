@@ -18,6 +18,7 @@
         <ul class="nav-menu">
           <li><a href="index.html">Trang chủ</a></li>
           <li><a href="play.html">Chơi với máy</a></li>
+          <li><a href="rooms.html">Danh sách phòng</a></li>
           <li><a href="play-online.html">Chơi với người</a></li>
           <li><a href="profile.html" data-auth="user" style="display: none">Hồ sơ</a></li>
         </ul>
@@ -94,11 +95,19 @@
         </div>
 
         <div class="opt-group">
-          <button class="btn btn-accent btn-block btn-lg" id="btn-create" disabled>＋ Tạo phòng riêng</button>
+          <button class="btn btn-accent btn-block btn-lg" id="btn-create" disabled>＋ Tạo phòng mới</button>
         </div>
 
         <div class="opt-group">
-          <label>Vào phòng bằng mã</label>
+          <label style="display: flex; justify-content: space-between; align-items: center">
+            <span>Phòng đang mở</span>
+            <button class="btn btn-ghost" id="btn-refresh" style="padding: 4px 12px; font-size: 0.8rem">↻ Làm mới</button>
+          </label>
+          <div id="room-list" class="room-list"><div class="room-empty">Đang tải danh sách phòng…</div></div>
+        </div>
+
+        <div class="opt-group">
+          <label>Hoặc vào bằng mã phòng</label>
           <div class="chat-row">
             <input type="text" id="join-code" placeholder="VD: AB12" maxlength="4" style="text-transform: uppercase" />
             <button class="btn btn-ghost" id="btn-join" disabled>Vào</button>
