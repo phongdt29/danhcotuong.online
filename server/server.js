@@ -63,13 +63,21 @@ app.use('/api/users', userRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
-// Frontend tĩnh
+// Frontend tĩnh — 'no-cache' để trình duyệt luôn revalidate (ETag), tránh kẹt bản JS/CSS cũ.
+// File đổi -> tải bản mới; không đổi -> trả 304 (rất nhẹ). Khỏi phải Ctrl+F5.
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-app.use(express.static(PUBLIC_DIR));
+app.use(
+  express.static(PUBLIC_DIR, {
+    etag: true,
+    lastModified: true,
+    setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache'),
+  })
+);
 
 // Mọi đường dẫn khác -> trang chủ (cho phép mở thẳng các .html)
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
+  res.setHeader('Cache-Control', 'no-cache');
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
