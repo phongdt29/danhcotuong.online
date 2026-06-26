@@ -3,13 +3,21 @@
  * Thuật toán: Negamax + cắt tỉa alpha-beta, lượng giá = giá trị quân + bảng vị trí (PST).
  * Nhận message: { board, difficulty } -> trả về { move, nodes }.
  */
-importScripts('xiangqi.js');
+importScripts('xiangqi.js?v=2');
 
 const X = self.Xiangqi;
 const RED = X.RED;
 const BLACK = X.BLACK;
 
 const MATE = 1000000;
+const REPEAT_PENALTY = 60; // phạt nước đi tạo lại thế cờ vừa xuất hiện (chống lặp)
+
+// Khoá thế cờ (chuỗi) để phát hiện lặp.
+function boardKey(board) {
+  let s = '';
+  for (let y = 0; y < X.ROWS; y++) for (let x = 0; x < X.COLS; x++) s += board[y][x] || '.';
+  return s;
+}
 
 // Giá trị quân (đơn vị ~ centipawn)
 const VALUE = {
@@ -173,29 +181,36 @@ function negamax(game, depth, alpha, beta, color) {
   return best;
 }
 
-function chooseMove(game, color, depth, randomness) {
+function chooseMove(game, color, depth, randomness, recent) {
   nodeCount = 0;
   const moves = orderMoves(game, game.legalMoves(color));
   if (moves.length === 0) return null;
   const opp = color === RED ? BLACK : RED;
   let alpha = -Infinity;
   const beta = Infinity;
+  const hasRecent = recent && recent.length > 0;
   const scored = [];
   for (const m of moves) {
     const cap = game._apply(m);
-    const score = -negamax(game, depth - 1, -beta, -alpha, opp);
+    const raw = -negamax(game, depth - 1, -beta, -alpha, opp);
+    const key = hasRecent ? boardKey(game.board) : null;
     game._revert(m, cap);
+    if (raw > alpha) alpha = raw; // cắt tỉa dùng điểm thật
+    // Phạt nếu nước này tạo lại một thế cờ vừa xuất hiện (gây lặp)
+    const score = key && recent.indexOf(key) !== -1 ? raw - REPEAT_PENALTY : raw;
     scored.push({ move: m, score });
-    if (score > alpha) alpha = score;
   }
   scored.sort((a, b) => b.score - a.score);
 
-  // Mức dễ: thỉnh thoảng chọn ngẫu nhiên trong nhóm nước gần tốt nhất
+  // Mức dễ/trung bình: thỉnh thoảng chọn ngẫu nhiên trong nhóm nước gần tốt nhất
   if (randomness > 0 && Math.random() < randomness) {
     const top = scored.filter((s) => s.score >= scored[0].score - 80);
     return top[Math.floor(Math.random() * top.length)].move;
   }
-  return scored[0].move;
+  // Luôn phá thế đơn định: chọn ngẫu nhiên trong nhóm nước ngang điểm tốt nhất
+  const best = scored[0].score;
+  const ties = scored.filter((s) => s.score >= best - 12);
+  return ties[Math.floor(Math.random() * ties.length)].move;
 }
 
 const LEVELS = {
@@ -205,9 +220,9 @@ const LEVELS = {
 };
 
 self.onmessage = function (e) {
-  const { board, difficulty } = e.data;
+  const { board, difficulty, recent } = e.data;
   const cfg = LEVELS[difficulty] || LEVELS.medium;
   const game = new X.Game(board, BLACK); // AI luôn cầm quân Đen ở v1
-  const move = chooseMove(game, BLACK, cfg.depth, cfg.randomness);
+  const move = chooseMove(game, BLACK, cfg.depth, cfg.randomness, recent || []);
   self.postMessage({ move, nodes: nodeCount });
 };

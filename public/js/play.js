@@ -77,6 +77,13 @@
     return String.fromCharCode(65 + x) + (10 - y);
   }
 
+  // Khoá thế cờ (để gửi cho AI tránh lặp nước)
+  function boardKey(board) {
+    let s = '';
+    for (let y = 0; y < X.ROWS; y++) for (let x = 0; x < X.COLS; x++) s += board[y][x] || '.';
+    return s;
+  }
+
   /* ---------------- Khởi tạo ván ---------------- */
   function startGame(difficulty, minutes) {
     state.difficulty = difficulty;
@@ -88,6 +95,7 @@
     state.thinking = false;
     state.startTs = Date.now();
     state.game = new X.Game();
+    state.positions = [boardKey(state.game.board)];
 
     if (!state.board) {
       state.board = new window.Board($('board'), {
@@ -101,7 +109,7 @@
     state.board.render(state.game);
 
     if (!state.worker) {
-      state.worker = new Worker('js/engine/ai.worker.js');
+      state.worker = new Worker('js/engine/ai.worker.js?v=2');
       state.worker.onmessage = onAiReply;
     }
 
@@ -156,7 +164,7 @@
     // gửi bản sao bàn cờ cho worker
     const snapshot = state.game.board.map((r) => r.slice());
     setTimeout(() => {
-      state.worker.postMessage({ board: snapshot, difficulty: state.difficulty });
+      state.worker.postMessage({ board: snapshot, difficulty: state.difficulty, recent: state.positions.slice(-12) });
     }, 120);
   }
 
@@ -184,6 +192,7 @@
 
   /* ---------------- Sau mỗi nước ---------------- */
   function afterMove(rec) {
+    state.positions.push(boardKey(state.game.board));
     // quân bị ăn
     if (rec.captured) {
       const capColor = X.colorOf(rec.captured);
@@ -310,6 +319,7 @@
     if (state.game.history.length > 0 && state.game.turn !== X.RED) {
       popCaptured(state.game.undo());
     }
+    state.positions = state.positions.slice(0, state.game.history.length + 1);
     const last = state.game.history[state.game.history.length - 1];
     state.board.setLastMove(last ? { from: last.from, to: last.to } : null);
     state.board.clearSelection();
