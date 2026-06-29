@@ -109,7 +109,7 @@
     state.board.render(state.game);
 
     if (!state.worker) {
-      state.worker = new Worker('js/engine/ai.worker.js?v=2');
+      state.worker = new Worker('js/engine/ai.worker.js?v=4');
       state.worker.onmessage = onAiReply;
     }
 
