@@ -521,6 +521,7 @@ img {
 }
 .opt-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .opt-row input {

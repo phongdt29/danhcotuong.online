@@ -120,6 +120,10 @@ const PST = {
 };
 
 let nodeCount = 0;
+let startTime = 0; // thời điểm bắt đầu nghĩ (ms)
+let timeLimit = 0; // ngân sách thời gian mỗi nước (ms)
+let timedOut = false;
+let killers = []; // killer moves theo độ sâu (ply) để cắt tỉa tốt hơn
 
 // Lượng giá từ góc nhìn ĐỎ (dương = lợi cho Đỏ)
 function evaluateRaw(game) {
@@ -157,72 +161,147 @@ function orderMoves(game, moves) {
   return moves;
 }
 
-function negamax(game, depth, alpha, beta, color) {
+function sameMove(m, k) {
+  return k && m.from.x === k.from.x && m.from.y === k.from.y && m.to.x === k.to.x && m.to.y === k.to.y;
+}
+function recordKiller(m, ply) {
+  if (!killers[ply]) killers[ply] = [null, null];
+  const k = killers[ply];
+  if (!sameMove(m, k[0])) {
+    k[1] = k[0];
+    k[0] = { from: { x: m.from.x, y: m.from.y }, to: { x: m.to.x, y: m.to.y } };
+  }
+}
+
+// Sắp xếp: nước ăn quân (MVV-LVA) trước, rồi killer move.
+function orderMovesK(game, moves, ply) {
+  const b = game.board;
+  const k = killers[ply];
+  for (const m of moves) {
+    const victim = b[m.to.y][m.to.x];
+    let s = 0;
+    if (victim) s = 100000 + VALUE[X.typeOf(victim)] * 10 - VALUE[X.typeOf(b[m.from.y][m.from.x])];
+    else if (k && (sameMove(m, k[0]) || sameMove(m, k[1]))) s = 9000;
+    m._score = s;
+  }
+  moves.sort((a, b2) => b2._score - a._score);
+  return moves;
+}
+
+function timeUp() {
+  if ((nodeCount & 1023) === 0 && Date.now() - startTime > timeLimit) timedOut = true;
+  return timedOut;
+}
+
+// Quiescence: tại nút lá chỉ tìm tiếp các nước ĂN QUÂN cho tới khi "yên tĩnh"
+// -> tránh "horizon effect" (AI thí quân vì không thấy hậu quả ngay sau tầm tìm).
+function quiesce(game, alpha, beta, color) {
+  if (timeUp()) return evaluate(game, color);
+  const standPat = evaluate(game, color);
+  if (standPat >= beta) return beta;
+  if (standPat > alpha) alpha = standPat;
+  const caps = game.legalMoves(color).filter((m) => game.board[m.to.y][m.to.x]);
+  orderMoves(game, caps);
+  const opp = color === RED ? BLACK : RED;
+  for (const m of caps) {
+    nodeCount++;
+    const cap = game._apply(m);
+    const score = -quiesce(game, -beta, -alpha, opp);
+    game._revert(m, cap);
+    if (score >= beta) return beta;
+    if (score > alpha) alpha = score;
+  }
+  return alpha;
+}
+
+function negamax(game, depth, alpha, beta, color, ply, useQ) {
+  if (timeUp()) return evaluate(game, color);
   const moves = game.legalMoves(color);
-  if (moves.length === 0) {
-    // hết nước -> bên đi thua (chiếu hết hoặc hết nước)
-    return -MATE - depth;
-  }
-  if (depth === 0) {
-    return evaluate(game, color);
-  }
-  orderMoves(game, moves);
+  if (moves.length === 0) return -MATE - depth; // hết nước -> thua
+  if (depth === 0) return useQ ? quiesce(game, alpha, beta, color) : evaluate(game, color);
+  orderMovesK(game, moves, ply);
   const opp = color === RED ? BLACK : RED;
   let best = -Infinity;
   for (const m of moves) {
     nodeCount++;
+    const isCap = !!game.board[m.to.y][m.to.x];
     const cap = game._apply(m);
-    const score = -negamax(game, depth - 1, -beta, -alpha, opp);
+    const score = -negamax(game, depth - 1, -beta, -alpha, opp, ply + 1, useQ);
     game._revert(m, cap);
     if (score > best) best = score;
     if (best > alpha) alpha = best;
-    if (alpha >= beta) break;
+    if (alpha >= beta) {
+      if (!isCap) recordKiller(m, ply); // chỉ nhớ nước "yên" (không ăn quân)
+      break;
+    }
   }
   return best;
 }
 
-function chooseMove(game, color, depth, randomness, recent) {
+// Iterative deepening: nghĩ sâu dần tới maxDepth hoặc hết ngân sách thời gian.
+function chooseMove(game, color, cfg, recent) {
   nodeCount = 0;
-  const moves = orderMoves(game, game.legalMoves(color));
-  if (moves.length === 0) return null;
+  killers = [];
+  timedOut = false;
+  startTime = Date.now();
+  timeLimit = cfg.timeMs;
+  const rootMoves = game.legalMoves(color);
+  if (rootMoves.length === 0) return null;
   const opp = color === RED ? BLACK : RED;
-  let alpha = -Infinity;
-  const beta = Infinity;
   const hasRecent = recent && recent.length > 0;
-  const scored = [];
-  for (const m of moves) {
-    const cap = game._apply(m);
-    const raw = -negamax(game, depth - 1, -beta, -alpha, opp);
-    const key = hasRecent ? boardKey(game.board) : null;
-    game._revert(m, cap);
-    if (raw > alpha) alpha = raw; // cắt tỉa dùng điểm thật
-    // Phạt nếu nước này tạo lại một thế cờ vừa xuất hiện (gây lặp)
-    const score = key && recent.indexOf(key) !== -1 ? raw - REPEAT_PENALTY : raw;
-    scored.push({ move: m, score });
-  }
-  scored.sort((a, b) => b.score - a.score);
+  let bestScored = rootMoves.map((m) => ({ move: m, score: 0 }));
+  let bestMove = rootMoves[0];
 
-  // Mức dễ/trung bình: thỉnh thoảng chọn ngẫu nhiên trong nhóm nước gần tốt nhất
-  if (randomness > 0 && Math.random() < randomness) {
-    const top = scored.filter((s) => s.score >= scored[0].score - 80);
+  for (let d = 1; d <= cfg.depth; d++) {
+    let alpha = -Infinity;
+    const beta = Infinity;
+    const scored = [];
+    orderMovesK(game, rootMoves, 0);
+    // ưu tiên nước tốt nhất của vòng trước -> cắt tỉa tốt hơn
+    const bi = rootMoves.indexOf(bestMove);
+    if (bi > 0) { rootMoves.splice(bi, 1); rootMoves.unshift(bestMove); }
+    for (const m of rootMoves) {
+      const cap = game._apply(m);
+      const raw = -negamax(game, d - 1, -beta, -alpha, opp, 1, cfg.quiesce);
+      const key = hasRecent ? boardKey(game.board) : null;
+      game._revert(m, cap);
+      if (timedOut) break;
+      let score = raw;
+      if (key && recent.indexOf(key) !== -1) score -= REPEAT_PENALTY; // chống lặp
+      scored.push({ move: m, score });
+      if (raw > alpha) alpha = raw;
+    }
+    if (timedOut && scored.length < rootMoves.length) break; // vòng dở -> giữ kết quả vòng trước
+    scored.sort((a, b) => b.score - a.score);
+    bestScored = scored;
+    bestMove = scored[0].move;
+    if (Math.abs(scored[0].score) > MATE - 1000) break; // đã thấy chiếu hết
+    if (Date.now() - startTime > timeLimit) break;
+  }
+
+  // Mức dễ/trung bình: thỉnh thoảng chọn ngẫu nhiên trong nhóm gần tốt nhất
+  if (cfg.randomness > 0 && Math.random() < cfg.randomness) {
+    const top = bestScored.filter((s) => s.score >= bestScored[0].score - 80);
     return top[Math.floor(Math.random() * top.length)].move;
   }
-  // Luôn phá thế đơn định: chọn ngẫu nhiên trong nhóm nước ngang điểm tốt nhất
-  const best = scored[0].score;
-  const ties = scored.filter((s) => s.score >= best - 12);
+  // Phá thế đơn định nhẹ: chọn ngẫu nhiên trong nhóm ngang điểm tốt nhất
+  const best = bestScored[0].score;
+  const ties = bestScored.filter((s) => s.score >= best - 12);
   return ties[Math.floor(Math.random() * ties.length)].move;
 }
 
 const LEVELS = {
-  easy: { depth: 2, randomness: 0.45 },
-  medium: { depth: 3, randomness: 0.1 },
-  hard: { depth: 4, randomness: 0 },
+  easy:   { depth: 2, randomness: 0.5,  timeMs: 400,  quiesce: false }, // Dễ
+  medium: { depth: 3, randomness: 0.2,  timeMs: 700,  quiesce: true },  // Trung bình
+  hard:   { depth: 4, randomness: 0.05, timeMs: 1200, quiesce: true },  // Khó
+  expert: { depth: 6, randomness: 0,    timeMs: 2000, quiesce: true },  // Rất khó
+  master: { depth: 8, randomness: 0,    timeMs: 3000, quiesce: true },  // Cao thủ
 };
 
 self.onmessage = function (e) {
   const { board, difficulty, recent } = e.data;
   const cfg = LEVELS[difficulty] || LEVELS.medium;
-  const game = new X.Game(board, BLACK); // AI luôn cầm quân Đen ở v1
-  const move = chooseMove(game, BLACK, cfg.depth, cfg.randomness, recent || []);
+  const game = new X.Game(board, BLACK); // AI luôn cầm quân Đen
+  const move = chooseMove(game, BLACK, cfg, recent || []);
   self.postMessage({ move, nodes: nodeCount });
 };

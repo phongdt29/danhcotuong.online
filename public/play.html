@@ -93,6 +93,10 @@
             <label for="d-med">Trung bình</label>
             <input type="radio" name="difficulty" id="d-hard" value="hard" />
             <label for="d-hard">Khó</label>
+            <input type="radio" name="difficulty" id="d-expert" value="expert" />
+            <label for="d-expert">Rất khó</label>
+            <input type="radio" name="difficulty" id="d-master" value="master" />
+            <label for="d-master">Cao thủ</label>
           </div>
         </div>
         <div class="opt-group">
@@ -131,7 +135,7 @@
     <script>
       // hiển thị nhãn độ khó trên thanh người chơi
       (function () {
-        const map = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' };
+        const map = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó', expert: 'Rất khó', master: 'Cao thủ' };
         document.querySelectorAll('input[name="difficulty"]').forEach((r) =>
           r.addEventListener('change', () => {
             document.getElementById('ai-level').textContent = map[r.value] || 'AI';
