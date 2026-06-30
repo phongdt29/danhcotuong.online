@@ -3,7 +3,7 @@
  * Thuật toán: Negamax + cắt tỉa alpha-beta, lượng giá = giá trị quân + bảng vị trí (PST).
  * Nhận message: { board, difficulty } -> trả về { move, nodes }.
  */
-importScripts('xiangqi.js?v=3');
+importScripts('xiangqi.js?v=4');
 
 const X = self.Xiangqi;
 const RED = X.RED;
@@ -156,6 +156,7 @@ function hasMajor(game, color) {
   return false;
 }
 
+const MDIR = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 // Lượng giá từ góc nhìn ĐỎ (dương = lợi cho Đỏ)
 function evaluateRaw(game) {
   let score = 0;
@@ -168,7 +169,17 @@ function evaluateRaw(game) {
       const isRed = X.colorOf(p) === RED;
       const base = VALUE[t];
       const pst = isRed ? PST[t][y][x] : PST[t][X.ROWS - 1 - y][x];
-      const v = base + pst;
+      let v = base + pst;
+      // Mobility: thưởng đường thoáng cho Xe (rất mạnh) và Pháo — cột/hàng mở rất lợi.
+      if (t === 'R' || t === 'C') {
+        let mob = 0;
+        for (let di = 0; di < 4; di++) {
+          const dx = MDIR[di][0], dy = MDIR[di][1];
+          let nx = x + dx, ny = y + dy;
+          while (nx >= 0 && nx < 9 && ny >= 0 && ny < 10 && !b[ny][nx]) { mob++; nx += dx; ny += dy; }
+        }
+        v += t === 'R' ? mob * 3 : mob;
+      }
       score += isRed ? v : -v;
     }
   }
@@ -371,8 +382,8 @@ const LEVELS = {
   easy:   { depth: 2,  randomness: 0.5,  timeMs: 400,  quiesce: false }, // Dễ
   medium: { depth: 4,  randomness: 0.2,  timeMs: 700,  quiesce: true },  // Trung bình
   hard:   { depth: 6,  randomness: 0.05, timeMs: 1200, quiesce: true },  // Khó
-  expert: { depth: 12, randomness: 0,    timeMs: 2000, quiesce: true },  // Rất khó
-  master: { depth: 20, randomness: 0,    timeMs: 3500, quiesce: true },  // Cao thủ
+  expert: { depth: 12, randomness: 0,    timeMs: 2800, quiesce: true },  // Rất khó
+  master: { depth: 24, randomness: 0,    timeMs: 5000, quiesce: true },  // Cao thủ
 };
 
 self.onmessage = function (e) {

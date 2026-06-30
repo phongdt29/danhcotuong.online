@@ -163,9 +163,55 @@
     updateStatus('AI đang suy nghĩ…');
     // gửi bản sao bàn cờ cho worker
     const snapshot = state.game.board.map((r) => r.slice());
+    // Tra "sổ tay tự học" trước (trừ mức Dễ, chỉ ở giai đoạn khai cuộc <30 nước —
+    // nơi sổ có dữ liệu). Có nước đã được chứng minh -> đánh luôn.
+    if (state.difficulty !== 'easy' && state.game.history.length < 30 && window.API && window.API.bookLookup) {
+      window.API.bookLookup(snapshot)
+        .then((res) => {
+          if (state.over || !state.thinking) return;
+          const mv = res && res.move;
+          if (mv && isLegalAiMove(mv)) {
+            setTimeout(() => { if (!state.over && state.thinking) applyAiMove(mv); }, 250);
+          } else {
+            askEngine(snapshot);
+          }
+        })
+        .catch(() => askEngine(snapshot));
+    } else {
+      askEngine(snapshot);
+    }
+  }
+
+  // Gọi engine (Web Worker) tính nước đi.
+  function askEngine(snapshot) {
     setTimeout(() => {
+      if (state.over || !state.thinking) return;
       state.worker.postMessage({ board: snapshot, difficulty: state.difficulty, recent: state.positions.slice(-12) });
     }, 120);
+  }
+
+  // Kiểm tra nước (từ sổ tay) có hợp lệ ở thế cờ hiện tại không (an toàn).
+  function isLegalAiMove(mv) {
+    if (!mv || !mv.from || !mv.to) return false;
+    return state.game.legalMoves(X.BLACK).some(
+      (m) => m.from.x === mv.from.x && m.from.y === mv.from.y && m.to.x === mv.to.x && m.to.y === mv.to.y
+    );
+  }
+
+  // Áp dụng nước đi của AI (dùng chung cho sổ tay & engine).
+  function applyAiMove(mv) {
+    state.thinking = false;
+    if (state.over) return;
+    const rec = state.game.move(mv.from, mv.to);
+    if (!rec) {
+      state.board.setInteractive(true);
+      return;
+    }
+    afterMove(rec);
+    if (!state.over) {
+      state.board.setInteractive(true);
+      updateStatus('Tới lượt bạn (Đỏ)');
+    }
   }
 
   function onAiReply(e) {
@@ -177,17 +223,7 @@
       endGame(X.RED, 'Chiếu hết');
       return;
     }
-    const rec = state.game.move(mv.from, mv.to);
-    if (!rec) {
-      // không nên xảy ra
-      state.board.setInteractive(true);
-      return;
-    }
-    afterMove(rec);
-    if (!state.over) {
-      state.board.setInteractive(true);
-      updateStatus('Tới lượt bạn (Đỏ)');
-    }
+    applyAiMove(mv);
   }
 
   /* ---------------- Sau mỗi nước ---------------- */
@@ -235,6 +271,16 @@
     updateStatus(result + ' — ' + reason);
     showResultModal(result, reason);
     saveResult(humanWon ? 'win' : 'loss');
+    learnBook(winnerColor === X.BLACK); // AI (Đen) thắng -> gia cố; thua -> giảm trọng số
+  }
+
+  // Gửi ván đã kết thúc cho "sổ tay tự học" (AI cầm Đen). Học từ mọi mức trừ Dễ.
+  function learnBook(blackWon) {
+    if (state.difficulty === 'easy') return;
+    if (!window.API || !window.API.bookLearn) return;
+    const moves = state.game.history.map((h) => ({ from: h.from, to: h.to }));
+    if (moves.length < 4) return;
+    window.API.bookLearn(moves, blackWon).catch(() => {});
   }
 
   function showResultModal(title, reason) {
