@@ -17,6 +17,23 @@
   --font: "Segoe UI", "Inter", system-ui, -apple-system, Roboto, Arial, sans-serif;
 }
 
+/* ---------- Giao diện Sáng (bật bằng nút ☀️/🌙, lưu localStorage) ---------- */
+[data-theme='light'] {
+  --c-bg: #eef2f7;
+  --c-bg-soft: #ffffff;
+  --c-card: #ffffff;
+  --c-border: #d6dee7;
+  --c-text: #1a2530;
+  --c-muted: #5c6b7a;
+  --shadow: 0 10px 30px rgba(30, 50, 80, 0.14);
+}
+[data-theme='light'] body {
+  background: radial-gradient(1200px 600px at 50% -10%, #dbe6f2, var(--c-bg)) fixed;
+}
+[data-theme='light'] .navbar {
+  background: rgba(255, 255, 255, 0.92);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -423,6 +440,20 @@ img {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+/* Khung quảng cáo dưới Lịch sử nước đi */
+.ad-panel {
+  padding: 0;
+  overflow: hidden;
+}
+.ad-panel a {
+  display: block;
+  line-height: 0;
+}
+.ad-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
 #status-msg {
   font-weight: 700;
   font-size: 1.05rem;
@@ -461,6 +492,50 @@ img {
 }
 .mv-black {
   color: #9fc3e8;
+}
+/* Chat phòng online */
+.chat-box {
+  height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 0.88rem;
+}
+.chat-msg {
+  padding: 5px 9px;
+  border-radius: 10px;
+  background: var(--c-bg-soft);
+  align-self: flex-start;
+  max-width: 85%;
+  word-break: break-word;
+}
+.chat-msg.mine {
+  align-self: flex-end;
+  background: var(--c-primary);
+  color: #fff;
+}
+.chat-name {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.7;
+  margin-bottom: 1px;
+}
+.chat-msg.mine .chat-name {
+  color: #ffe;
+}
+
+/* Chú thích phân tích ván */
+.mv-blunder {
+  background: rgba(220, 38, 38, 0.22);
+  color: #ffd0c8 !important;
+  font-weight: 700;
+}
+.mv-good {
+  background: rgba(34, 160, 80, 0.22);
+  color: #c6f6d5 !important;
+  font-weight: 700;
 }
 
 /* ---------- Overlay / Modal ---------- */

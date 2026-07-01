@@ -20,6 +20,7 @@
       this.selected = null; // {x,y}
       this.legalForSel = [];
       this.lastMove = null; // {from,to}
+      this.hintMove = null; // {from,to} — gợi ý (không tự đi)
       this.interactive = true;
       this._build();
     }
@@ -135,6 +136,20 @@
         pt.addEventListener('click', () => this._onClick(m.to.x, m.to.y));
         this.layer.appendChild(pt);
       }
+
+      // Gợi ý nước đi (đánh dấu ô đi & ô đến, không tự đi)
+      if (this.hintMove) {
+        const mark = (mx, my, cls) => {
+          const d = document.createElement('div');
+          d.className = 'hint-mark ' + cls;
+          const pos = this._pos(mx, my);
+          d.style.left = pos.left + '%';
+          d.style.top = pos.top + '%';
+          this.layer.appendChild(d);
+        };
+        mark(this.hintMove.from.x, this.hintMove.from.y, 'hint-from');
+        mark(this.hintMove.to.x, this.hintMove.to.y, 'hint-to');
+      }
     }
 
     _onClick(x, y) {
@@ -172,6 +187,16 @@
 
     setLastMove(m) {
       this.lastMove = m;
+    }
+
+    setHint(m) {
+      this.hintMove = m;
+      if (this.game) this.render(this.game);
+    }
+    clearHint() {
+      if (!this.hintMove) return;
+      this.hintMove = null;
+      if (this.game) this.render(this.game);
     }
 
     clearSelection() {

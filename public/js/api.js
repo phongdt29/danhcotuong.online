@@ -49,6 +49,7 @@
     matchMove: (code, token, from, to) => req('POST', '/api/match/move', { code, token, from, to }),
     matchResign: (code, token) => req('POST', '/api/match/resign', { code, token }),
     matchOver: (code, token, text, winner) => req('POST', '/api/match/over', { code, token, text, winner }),
+    matchChat: (code, token, text) => req('POST', '/api/match/chat', { code, token, text }),
 
     // Sổ tay tự học của AI (chơi với máy)
     bookLookup: (board) => req('POST', '/api/book/lookup', { board }),

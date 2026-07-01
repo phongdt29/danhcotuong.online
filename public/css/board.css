@@ -83,6 +83,30 @@
   box-sizing: border-box;
 }
 
+/* Đánh dấu gợi ý nước đi (ô đi & ô đến) */
+.hint-mark {
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 3;
+  animation: hint-pulse 1s ease-in-out infinite;
+}
+.hint-mark.hint-from {
+  border: 3px dashed rgba(255, 193, 7, 0.95);
+}
+.hint-mark.hint-to {
+  border: 4px solid rgba(255, 152, 0, 0.95);
+  background: rgba(255, 193, 7, 0.22);
+}
+@keyframes hint-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
 .bpiece {
   width: calc(var(--cell) * 0.84);
   height: calc(var(--cell) * 0.84);

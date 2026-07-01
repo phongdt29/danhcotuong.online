@@ -387,9 +387,10 @@ const LEVELS = {
 };
 
 self.onmessage = function (e) {
-  const { board, difficulty, recent } = e.data;
+  const { board, difficulty, recent, color, tag } = e.data;
   const cfg = LEVELS[difficulty] || LEVELS.medium;
-  const game = new X.Game(board, BLACK); // AI luôn cầm quân Đen
-  const move = chooseMove(game, BLACK, cfg, recent || []);
-  self.postMessage({ move, nodes: nodeCount });
+  const who = color === 'r' ? RED : BLACK; // mặc định AI cầm Đen; gợi ý cho người thì 'r'
+  const game = new X.Game(board, who);
+  const move = chooseMove(game, who, cfg, recent || []);
+  self.postMessage({ move, nodes: nodeCount, tag: tag || 'ai' });
 };
