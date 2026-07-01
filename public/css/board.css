@@ -139,6 +139,18 @@
   outline-offset: 1px;
 }
 
+/* Cờ úp: quân chưa lật (mặt sau). Chữ "?" do play-up.js đặt (chạy được cả khi CSS cũ). */
+.bpiece.covered {
+  background: radial-gradient(circle at 32% 30%, #8a949f, #4a5560 72%);
+  color: rgba(255, 255, 255, 0.8);
+}
+.bpiece.red.covered {
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.35), inset 0 0 0 3px #e8543c;
+}
+.bpiece.black.covered {
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.35), inset 0 0 0 3px #2b3a4d;
+}
+
 .bpoint.last-move::after,
 .bpiece.last-move::after {
   content: "";

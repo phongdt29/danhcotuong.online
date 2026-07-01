@@ -100,7 +100,13 @@
           const color = X.colorOf(p);
           const div = document.createElement('div');
           div.className = 'bpiece ' + (color === X.RED ? 'red' : 'black');
-          div.textContent = GLYPH[color][X.typeOf(p)];
+          // Cờ úp: quân chưa lật hiển thị mặt sau (không lộ quân thật).
+          if (this.opts.coveredFn && this.opts.coveredFn(x, y)) {
+            div.classList.add('covered');
+            div.textContent = '';
+          } else {
+            div.textContent = GLYPH[color][X.typeOf(p)];
+          }
           const pos = this._pos(x, y);
           div.style.left = pos.left + '%';
           div.style.top = pos.top + '%';
